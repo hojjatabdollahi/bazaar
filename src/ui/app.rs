@@ -9,7 +9,7 @@ use iced::{
 };
 use iced_aw::wrap;
 
-use crate::backend::flatpak_backend::{self, Package};
+use crate::backend::flatpak_backend::{self, uninstall, Package, PackageId};
 
 use super::appearance::{self, StyleSheet};
 
@@ -32,10 +32,14 @@ struct BazaarApp {
 #[derive(Debug, Clone)]
 enum Message {
     // Refresh,
+    Uninstall(PackageId),
 }
 
 impl BazaarApp {
-    fn app_icon<'a>(&self, width: u16, path: &PathBuf) -> Container<'a, Message> {
+    fn app_icon<'a>(&self, width: u16, path: &Option<PathBuf>) -> Container<'a, Message> {
+        let path = path
+            .clone()
+            .unwrap_or(format!("{}/resources/DefaultApp.png", env!("CARGO_MANIFEST_DIR")).into());
         container(
             image(path)
                 .content_fit(iced::ContentFit::Fill)
@@ -52,12 +56,12 @@ impl BazaarApp {
         container(row(vec![
             self.app_icon(64, &package.icon_path).into(),
             column(vec![
-                text(&package.name)
+                text(&package.pretty_name.clone().unwrap_or("".to_string()))
                     .width(Length::Fixed(250.))
                     .style(theme::Text::Color(self.style_sheet().app_card_text_color))
                     .size(28)
                     .into(),
-                text(&package.description)
+                text(&package.description.clone().unwrap_or(String::from("")))
                     .width(Length::Fixed(250.))
                     .style(theme::Text::Color(self.style_sheet().app_card_text_color))
                     .size(18)
@@ -65,12 +69,16 @@ impl BazaarApp {
             ])
             .width(Length::Shrink)
             .into(),
-            button(row(vec![
-                appearance::icon('\u{f01da}').into(),
-                text("install").into(),
-            ]))
-            .style(theme::Button::Text)
-            .into(),
+            button(appearance::icon('\u{f1767}'))
+                .on_press(Message::Uninstall(package.name.clone()))
+                .style(theme::Button::Text)
+                .into(),
+            // button(row(vec![
+            //     appearance::icon('\u{f01da}').into(),
+            //     text("install").into(),
+            // ]))
+            // .style(theme::Button::Text)
+            // .into(),
         ]))
         .width(Length::Fixed(300.0))
         .style(theme::Container::Custom(Box::new(
@@ -152,11 +160,12 @@ impl Application for BazaarApp {
     }
 
     fn update(&mut self, _message: Self::Message) -> iced::Command<Self::Message> {
-        // match _message {
-        //     Message::Refresh => {
-        //         println!("Refreshing");
-        //     }
-        // }
+        match _message {
+            Message::Uninstall(id) => {
+                println!("Uninstalling {}", id);
+                uninstall(&id);
+            }
+        }
         iced::Command::none()
     }
 

@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 libflatpak = {git = "https://gitlab.gnome.org/World/Rust/libflatpak-rs.git"}
+appstream = {git = "https://github.com/bilelmoussaoui/appstream.git"}
 iced = {version = "0.8.0", features=["svg", "image"]}
 iced_aw = "0.4.1"
 lazy_static = "1.4.0"
