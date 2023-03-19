@@ -1,17 +1,26 @@
-use std::path::PathBuf;
-
+// use crate::ui::action::refresh;
 use iced::{
-    executor, theme,
+    executor,
+    futures::{channel::mpsc, SinkExt},
+    theme,
     widget::{
         button, column, container, horizontal_rule, image, row, scrollable, svg, text, Container,
     },
     Application, Length, Settings, Theme,
 };
 use iced_aw::wrap;
+use std::{
+    cell::RefCell,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
 use crate::backend::flatpak_backend::{self, uninstall, Package, PackageId};
 
-use super::appearance::{self, StyleSheet};
+use super::{
+    action,
+    appearance::{self, StyleSheet},
+};
 
 pub fn run() -> iced::Result {
     BazaarApp::run(Settings {
@@ -24,15 +33,29 @@ struct Config {
     dark_mode: bool,
 }
 
+#[derive(Debug)]
+enum AppStatus {
+    Working,
+    Still,
+}
+
 struct BazaarApp {
     // pub view: String,
+    pub installed_apps: Arc<Mutex<RefCell<Vec<Package>>>>,
     pub config: Config,
+    status: String,
+    // actions: Vec<Action>,
+    action_counter: usize,
+    action: mpsc::Sender<action::action::Action>,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
-    // Refresh,
+    Start(()),
+    RequestRefreshInstalledApps,
+    // Refresh(refresh::Event),
     Uninstall(PackageId),
+    ActionMessage(action::action::Message),
 }
 
 impl BazaarApp {
@@ -91,29 +114,44 @@ impl BazaarApp {
     }
     fn installed_apps_view(&self) -> iced::Element<Message> {
         let mut apps = vec![];
-        for package in flatpak_backend::get_installed_apps() {
-            apps.push(self.app_card(&package));
+        if let Ok(installed_apps) = self.installed_apps.try_lock() {
+            for package in installed_apps.borrow().iter() {
+                apps.push(self.app_card(&package));
+            }
+            container(
+                column(vec![
+                    text("Installed Apps").size(30).into(),
+                    horizontal_rule(1.).into(),
+                    container(
+                        wrap::Wrap::with_elements(apps)
+                            .spacing(10.0)
+                            .line_spacing(10.0),
+                    )
+                    .width(Length::Fill)
+                    .center_x()
+                    .into(),
+                ])
+                .spacing(10.0),
+            )
+            .padding(10.0)
+            .style(theme::Container::Custom(Box::new(
+                appearance::SectionsStyle {},
+            )))
+            .into()
+        } else {
+            container(
+                column(vec![
+                    text("Loading").size(30).into(),
+                    horizontal_rule(1.).into(),
+                ])
+                .spacing(10.0),
+            )
+            .padding(10.0)
+            .style(theme::Container::Custom(Box::new(
+                appearance::SectionsStyle {},
+            )))
+            .into()
         }
-        container(
-            column(vec![
-                text("Installed Apps").size(30).into(),
-                horizontal_rule(1.).into(),
-                container(
-                    wrap::Wrap::with_elements(apps)
-                        .spacing(10.0)
-                        .line_spacing(10.0),
-                )
-                .width(Length::Fill)
-                .center_x()
-                .into(),
-            ])
-            .spacing(10.0),
-        )
-        .padding(10.0)
-        .style(theme::Container::Custom(Box::new(
-            appearance::SectionsStyle {},
-        )))
-        .into()
     }
 
     fn banner(&self) -> iced::Element<Message> {
@@ -126,6 +164,8 @@ impl BazaarApp {
             .height(Length::Fixed(400.))
             .into()
     }
+
+    async fn dummy() {}
 }
 
 impl Application for BazaarApp {
@@ -146,12 +186,18 @@ impl Application for BazaarApp {
     }
 
     fn new(_flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
+        let (tx, rx) = mpsc::channel(1);
         (
             BazaarApp {
                 // view: String::new(),
                 config: Config { dark_mode: true },
+                installed_apps: Default::default(),
+                status: "nothing".into(),
+                // actions: Default::default(),
+                action_counter: Default::default(),
+                action: tx,
             },
-            iced::Command::none(),
+            iced::Command::perform(Self::dummy(), Message::Start),
         )
     }
 
@@ -159,22 +205,95 @@ impl Application for BazaarApp {
         String::from("Bazaar")
     }
 
-    fn update(&mut self, _message: Self::Message) -> iced::Command<Self::Message> {
-        match _message {
+    fn subscription(&self) -> iced::Subscription<Self::Message> {
+        // iced::Subscription::batch(self.actions.iter().map(|action| match action.kind {
+        //     ActionKind::RefreshInstalled => refresh::refresh(action).map(Message::Refresh),
+        // }))
+        action::action::subscribe().map(Message::ActionMessage)
+    }
+
+    fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
+        match message {
+            Message::Start(_) => {
+                self.action_counter += 1;
+                // self.actions.push(Action {
+                //     id: self.action_counter,
+                //     kind: ActionKind::RefreshInstalled,
+                //     installed_apps: self.installed_apps.clone(),
+                // });
+                let res = self.action.start_send(action::action::Action::StartA);
+            }
+            Message::RequestRefreshInstalledApps => {
+                let res = self
+                    .action
+                    .start_send(action::action::Action::RefreshInstalled);
+            }
             Message::Uninstall(id) => {
                 println!("Uninstalling {}", id);
                 uninstall(&id);
             }
+            // Message::Refresh(event) => match event {
+            //     refresh::Event::Started(mut sender) => {
+            //         self.status = "Started".into();
+            //         let res = sender.try_send(refresh::Message::Load(self.installed_apps.clone()));
+            //     }
+            //     refresh::Event::Done => {
+            //         self.status = "Done".into();
+            //     }
+            // },
+            // Message::Refresh(event) => match event {
+            //     refresh::Event::Started => {
+            //         self.status = "Started".into();
+            //     }
+            //     refresh::Event::Done(id) => {
+            //         // println!("Deleting action {:?}", id);
+            //         //
+            //         // let mut idx_wr = 0usize;
+            //         // for idx_rd in 0..self.actions.len() {
+            //         //     if !(self.actions[idx_rd].id == id) {
+            //         //         self.actions.swap(idx_wr, idx_rd);
+            //         //         idx_wr += 1;
+            //         //     }
+            //         // }
+            //         // self.actions.truncate(idx_wr);
+            //         self.status = "Done".into();
+            //     }
+            // },
+            Message::ActionMessage(msg) => match msg {
+                action::action::Message::Ready(tx) => {
+                    self.action = tx;
+                }
+                action::action::Message::Refreshed(apps) => {
+                    println!("Refreshed installed apps");
+                    *self.installed_apps.lock().unwrap().borrow_mut() =
+                        Arc::try_unwrap(apps).unwrap();
+                }
+                action::action::Message::WorkAStarted => {
+                    println!("work a started");
+                }
+                action::action::Message::WorkBStarted => {
+                    println!("work b started");
+                }
+                action::action::Message::CleanUpStarted => {
+                    println!("cleanup started");
+                }
+            },
         }
         iced::Command::none()
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
         scrollable(
-            column(vec![self.installed_apps_view()])
-                .padding(30.0)
-                .width(Length::Fill)
-                .height(Length::Shrink),
+            column(vec![
+                button("refresh")
+                    .on_press(Message::RequestRefreshInstalledApps)
+                    .into(),
+                text(self.status.clone()).into(),
+                self.installed_apps_view(),
+            ])
+            .padding(30.0)
+            .width(Length::Fill)
+            .height(Length::Shrink),
         )
         .into()
     }

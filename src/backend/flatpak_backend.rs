@@ -10,6 +10,7 @@ use libflatpak::{
 
 use std::path::PathBuf;
 
+#[derive(Debug)]
 pub enum PackageKind {
     App,
     Runtime,
@@ -28,6 +29,7 @@ impl From<RefKind> for PackageKind {
     }
 }
 
+#[derive(Debug)]
 pub struct Package {
     pub name: PackageId,
     pub pretty_name: Option<String>,
