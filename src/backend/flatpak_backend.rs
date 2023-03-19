@@ -1,7 +1,5 @@
 use appstream::{enums::Bundle, AppId, Collection, Component};
 use libflatpak::{
-    builders::TransactionBuilder,
-    ffi::FlatpakTransaction,
     gio::{traits::FileExt, Cancellable},
     prelude::*,
     traits::{InstallationExt, InstalledRefExt, RefExt, RemoteExt, RemoteRefExt},
@@ -119,11 +117,9 @@ pub fn get_installed_apps() -> Vec<Package> {
     let installed_user = user
         .list_installed_refs(libflatpak::gio::Cancellable::NONE)
         .unwrap();
-    let mut package_id = 0;
     for pkg in installed_user {
         if pkg.kind() == RefKind::App {
             result.push(Package::from(pkg));
-            package_id += 1;
         }
     }
     result

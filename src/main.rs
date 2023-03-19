@@ -1,5 +1,3 @@
-use backend::flatpak_backend;
-
 pub(crate) mod backend;
 pub(crate) mod ui;
 
