@@ -3,8 +3,11 @@ use iced::{
     executor,
     futures::channel::mpsc,
     theme,
-    widget::{button, column, container, horizontal_rule, image, row, scrollable, text, Container},
-    Application, Length, Settings, Theme,
+    widget::{
+        button, column, container, horizontal_rule, horizontal_space, image, row, scrollable, text,
+        text_input, Container, Row,
+    },
+    window, Application, Length, Settings, Theme,
 };
 use iced_aw::wrap;
 use std::{
@@ -13,7 +16,10 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::backend::flatpak_backend::{Package, PackageId};
+use crate::{
+    backend::flatpak_backend::{Package, PackageId},
+    db::Storage,
+};
 
 use super::{
     action,
@@ -23,6 +29,11 @@ use super::{
 pub fn run() -> iced::Result {
     BazaarApp::run(Settings {
         default_font: Some(appearance::NOTO_SANS),
+        window: window::Settings {
+            decorations: true,
+            transparent: true,
+            ..window::Settings::default()
+        },
         ..Settings::default()
     })
 }
@@ -36,13 +47,18 @@ struct BazaarApp {
     pub config: Config,
     status: String,
     action: mpsc::Sender<action::Action>,
+    db: Arc<Mutex<Storage>>,
+    pub found_apps: Arc<Mutex<RefCell<Vec<Package>>>>,
+    search_term: String,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     RequestRefreshInstalledApps,
+    Close,
     Uninstall(PackageId),
     ActionMessage(action::Message),
+    Search(String),
 }
 
 impl BazaarApp {
@@ -101,7 +117,65 @@ impl BazaarApp {
             }
             container(
                 column(vec![
-                    text("Installed Apps").size(30).into(),
+                    row(vec![
+                        text("Installed Apps").size(30).into(),
+                        horizontal_space(Length::Fill).into(),
+                        button(appearance::icon('\u{eb37}'))
+                            .on_press(Message::RequestRefreshInstalledApps)
+                            .padding(10.)
+                            .style(theme::Button::Text)
+                            .into(),
+                    ])
+                    .into(),
+                    horizontal_rule(1.).into(),
+                    container(
+                        wrap::Wrap::with_elements(apps)
+                            .spacing(10.0)
+                            .line_spacing(10.0),
+                    )
+                    .width(Length::Fill)
+                    .center_x()
+                    .into(),
+                ])
+                .spacing(10.0),
+            )
+            .padding(10.0)
+            .style(theme::Container::Custom(Box::new(
+                appearance::SectionsStyle {},
+            )))
+            .into()
+        } else {
+            container(
+                column(vec![
+                    text("Loading").size(30).into(),
+                    horizontal_rule(1.).into(),
+                ])
+                .spacing(10.0),
+            )
+            .padding(10.0)
+            .style(theme::Container::Custom(Box::new(
+                appearance::SectionsStyle {},
+            )))
+            .into()
+        }
+    }
+
+    fn search_view(&self) -> iced::Element<Message> {
+        let mut apps = vec![];
+        if let Ok(found_apps) = self.found_apps.try_lock() {
+            for package in found_apps.borrow().iter() {
+                apps.push(self.app_card(&package));
+            }
+
+            container(
+                column(vec![
+                    row(vec![text_input(
+                        "Search Term",
+                        &self.search_term,
+                        Message::Search,
+                    )
+                    .into()])
+                    .into(),
                     horizontal_rule(1.).into(),
                     container(
                         wrap::Wrap::with_elements(apps)
@@ -155,12 +229,18 @@ impl Application for BazaarApp {
 
     fn new(_flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
         let (tx, _) = mpsc::channel(1);
+        let mut db = Storage::new().unwrap();
+        db.create_table().unwrap();
+        let db = Arc::new(Mutex::new(db));
         (
             BazaarApp {
                 config: Config { dark_mode: true },
                 installed_apps: Default::default(),
                 status: "nothing".into(),
                 action: tx,
+                db,
+                search_term: Default::default(),
+                found_apps: Default::default(),
             },
             iced::Command::none(),
         )
@@ -176,12 +256,24 @@ impl Application for BazaarApp {
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
         match message {
+            Message::Close => {
+                std::process::exit(0);
+            }
             Message::RequestRefreshInstalledApps => {
                 let _ = self.action.start_send(action::Action::RefreshInstalled);
             }
             Message::Uninstall(id) => {
                 println!("Uninstalling {}", id);
                 let _ = self.action.start_send(action::Action::Uninstall(id));
+            }
+            Message::Search(st) => {
+                self.search_term = st.clone();
+                if st.len() > 3 {
+                    println!("searching for {}", st);
+                    let _ = self
+                        .action
+                        .start_send(action::Action::Search((self.db.clone(), st)));
+                }
             }
             Message::ActionMessage(msg) => match msg {
                 action::Message::Ready(tx) => {
@@ -191,6 +283,10 @@ impl Application for BazaarApp {
                     println!("Refreshed installed apps");
                     *self.installed_apps.lock().unwrap().borrow_mut() =
                         Arc::try_unwrap(apps).unwrap();
+                }
+                action::Message::Found(apps) => {
+                    println!("Found apps: {}", apps.len());
+                    *self.found_apps.lock().unwrap().borrow_mut() = Arc::try_unwrap(apps).unwrap();
                 }
                 action::Message::Uninstalled(id) => {
                     println!("Uninstalled {:?}", id);
@@ -202,18 +298,22 @@ impl Application for BazaarApp {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        scrollable(
-            column(vec![
-                button("refresh")
-                    .on_press(Message::RequestRefreshInstalledApps)
-                    .into(),
-                text(self.status.clone()).into(),
-                self.installed_apps_view(),
-            ])
-            .padding(30.0)
-            .width(Length::Fill)
-            .height(Length::Shrink),
-        )
+        container(column(vec![
+            scrollable(
+                column(vec![self.search_view()])
+                    .padding(30.0)
+                    .width(Length::Fill)
+                    .height(Length::Shrink),
+            )
+            .into(),
+            scrollable(
+                column(vec![self.installed_apps_view()])
+                    .padding(30.0)
+                    .width(Length::Fill)
+                    .height(Length::Shrink),
+            )
+            .into(),
+        ]))
         .into()
     }
 }

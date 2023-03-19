@@ -16,3 +16,6 @@ iced_aw = "0.4.1"
 
 lazy_static = "1.4.0"
 
+[dependencies.rusqlite]
+version = "0.28.0"
+features = ["bundled"]

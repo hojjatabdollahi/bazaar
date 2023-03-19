@@ -8,8 +8,11 @@ use libflatpak::{
 
 use std::path::PathBuf;
 
-#[derive(Debug)]
+use crate::db::Storage;
+
+#[derive(Debug, Default)]
 pub enum PackageKind {
+    #[default]
     App,
     Runtime,
     Extension,
@@ -27,7 +30,7 @@ impl From<RefKind> for PackageKind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Package {
     pub name: PackageId,
     pub pretty_name: Option<String>,
@@ -148,7 +151,7 @@ pub fn uninstall(name: &str) {
     }
 }
 
-pub fn get_packages_remote() {
+pub fn get_packages_remote(storage: &Storage) {
     println!("Refreshing");
 
     let sys = Installation::new_system(libflatpak::gio::Cancellable::NONE).unwrap();
@@ -168,7 +171,7 @@ pub fn get_packages_remote() {
             .list_remote_refs_sync(&remote_name, Cancellable::NONE)
             .unwrap();
         for pkg in &packages {
-            println!("Ref: {}", pkg.name().unwrap().to_string());
+            // println!("Ref: {}", pkg.name().unwrap().to_string());
         }
         let mut appstream_file = PathBuf::new();
         let appstream_dir = remote.appstream_dir(Some(std::env::consts::ARCH)).unwrap();
@@ -196,7 +199,7 @@ pub fn get_packages_remote() {
         let mut db_packages = Vec::new();
         for remote_ref in &packages {
             let ref_name = remote_ref.format_ref().unwrap().to_string();
-            println!("Found package {}", ref_name);
+            // println!("Found package {}", ref_name);
             if remote_ref.arch().unwrap().to_string() != std::env::consts::ARCH {
                 println!("Not the same arch");
             }
@@ -214,16 +217,23 @@ pub fn get_packages_remote() {
                     None
                 }
             };
-            println!("{:?}", component);
+            // if remote_ref.name().unwrap().to_string() == "com.github.alexkdeveloper.somafm" {
+            //     println!("{:?}", component.unwrap().compulsory_for_desktop);
+            // }
+            let desc = component.and_then(|c| {
+                c.description
+                    .and_then(|d| d.get_default().map(String::to_owned))
+            });
             let package = Package {
                 name: remote_ref.name().unwrap().to_string(),
                 pretty_name: Some(ref_name),
                 kind: PackageKind::from(remote_ref.kind()),
                 icon_path: None,
-                description: Some("".into()),
+                description: desc,
             };
             db_packages.push(package);
         }
+        storage.insert_batch(&db_packages).unwrap();
     }
 }
 
