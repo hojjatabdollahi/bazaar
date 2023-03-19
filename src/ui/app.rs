@@ -55,7 +55,6 @@ struct BazaarApp {
 #[derive(Debug, Clone)]
 enum Message {
     RequestRefreshInstalledApps,
-    Close,
     Uninstall(PackageId),
     ActionMessage(action::Message),
     Search(String),
@@ -87,7 +86,7 @@ impl BazaarApp {
                     .style(theme::Text::Color(self.style_sheet().app_card_text_color))
                     .size(28)
                     .into(),
-                text(&package.description.clone().unwrap_or(String::from("")))
+                text(&package.summary.clone().unwrap_or(String::from("")))
                     .width(Length::Fixed(250.))
                     .style(theme::Text::Color(self.style_sheet().app_card_text_color))
                     .size(18)
@@ -231,6 +230,7 @@ impl Application for BazaarApp {
         let (tx, _) = mpsc::channel(1);
         let mut db = Storage::new().unwrap();
         db.create_table().unwrap();
+        db.all_packages = Some(db.all_names().unwrap());
         let db = Arc::new(Mutex::new(db));
         (
             BazaarApp {
@@ -256,9 +256,6 @@ impl Application for BazaarApp {
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
         match message {
-            Message::Close => {
-                std::process::exit(0);
-            }
             Message::RequestRefreshInstalledApps => {
                 let _ = self.action.start_send(action::Action::RefreshInstalled);
             }
@@ -268,11 +265,13 @@ impl Application for BazaarApp {
             }
             Message::Search(st) => {
                 self.search_term = st.clone();
-                if st.len() > 3 {
+                if st.len() >= 3 {
                     println!("searching for {}", st);
                     let _ = self
                         .action
                         .start_send(action::Action::Search((self.db.clone(), st)));
+                } else {
+                    self.found_apps.lock().unwrap().get_mut().clear();
                 }
             }
             Message::ActionMessage(msg) => match msg {

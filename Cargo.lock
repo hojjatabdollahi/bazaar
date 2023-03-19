@@ -125,6 +125,7 @@ dependencies = [
  "lazy_static",
  "libflatpak",
  "rusqlite",
+ "rust-fuzzy-search",
 ]
 
 [[package]]
@@ -2457,6 +2458,11 @@ dependencies = [
  "libsqlite3-sys",
  "smallvec",
 ]
+
+[[package]]
+name = "rust-fuzzy-search"
+version = "0.1.1"
+source = "git+https://gitlab.com/EnricoCh/rust-fuzzy-search#ee61779b91ba976bb8da861ff2f1a825f1be1464"
 
 [[package]]
 name = "rustc-hash"

@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 libflatpak = {git = "https://gitlab.gnome.org/World/Rust/libflatpak-rs.git"}
 appstream = {git = "https://github.com/bilelmoussaoui/appstream.git"}
+rust-fuzzy-search = { git = "https://gitlab.com/EnricoCh/rust-fuzzy-search"}
 
 iced = {version = "0.8.0", features=["svg", "image", "tokio"]}
 iced_native = "0.9.1"
@@ -19,3 +20,5 @@ lazy_static = "1.4.0"
 [dependencies.rusqlite]
 version = "0.28.0"
 features = ["bundled"]
+
+
