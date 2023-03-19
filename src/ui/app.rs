@@ -13,7 +13,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::backend::flatpak_backend::{uninstall, Package, PackageId};
+use crate::backend::flatpak_backend::{Package, PackageId};
 
 use super::{
     action,
@@ -35,14 +35,14 @@ struct BazaarApp {
     pub installed_apps: Arc<Mutex<RefCell<Vec<Package>>>>,
     pub config: Config,
     status: String,
-    action: mpsc::Sender<action::action::Action>,
+    action: mpsc::Sender<action::Action>,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     RequestRefreshInstalledApps,
     Uninstall(PackageId),
-    ActionMessage(action::action::Message),
+    ActionMessage(action::Message),
 }
 
 impl BazaarApp {
@@ -171,28 +171,30 @@ impl Application for BazaarApp {
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
-        action::action::subscribe().map(Message::ActionMessage)
+        action::subscribe().map(Message::ActionMessage)
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
         match message {
             Message::RequestRefreshInstalledApps => {
-                let _ = self
-                    .action
-                    .start_send(action::action::Action::RefreshInstalled);
+                let _ = self.action.start_send(action::Action::RefreshInstalled);
             }
             Message::Uninstall(id) => {
                 println!("Uninstalling {}", id);
-                uninstall(&id);
+                let _ = self.action.start_send(action::Action::Uninstall(id));
             }
             Message::ActionMessage(msg) => match msg {
-                action::action::Message::Ready(tx) => {
+                action::Message::Ready(tx) => {
                     self.action = tx;
                 }
-                action::action::Message::Refreshed(apps) => {
+                action::Message::Refreshed(apps) => {
                     println!("Refreshed installed apps");
                     *self.installed_apps.lock().unwrap().borrow_mut() =
                         Arc::try_unwrap(apps).unwrap();
+                }
+                action::Message::Uninstalled(id) => {
+                    println!("Uninstalled {:?}", id);
+                    let _ = self.action.start_send(action::Action::RefreshInstalled);
                 }
             },
         }
