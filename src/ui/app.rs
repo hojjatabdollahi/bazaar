@@ -127,13 +127,15 @@ impl BazaarApp {
                     ])
                     .into(),
                     horizontal_rule(1.).into(),
-                    container(
-                        wrap::Wrap::with_elements(apps)
-                            .spacing(10.0)
-                            .line_spacing(10.0),
+                    scrollable(
+                        container(
+                            wrap::Wrap::with_elements(apps)
+                                .spacing(10.0)
+                                .line_spacing(10.0),
+                        )
+                        .width(Length::Fill)
+                        .center_x(),
                     )
-                    .width(Length::Fill)
-                    .center_x()
                     .into(),
                 ])
                 .spacing(10.0),
@@ -168,21 +170,27 @@ impl BazaarApp {
 
             container(
                 column(vec![
-                    row(vec![text_input(
-                        "Search Term",
-                        &self.search_term,
-                        Message::Search,
-                    )
-                    .into()])
+                    row(vec![
+                        text("Installed Apps").size(30).into(),
+                        horizontal_space(Length::Fixed(30.0)).into(),
+                        text_input("Search Term", &self.search_term, Message::Search)
+                            .padding([4.0, 12.0, 4.0, 12.0])
+                            .style(theme::TextInput::Custom(Box::new(
+                                appearance::SearchBoxStyle {},
+                            )))
+                            .into(),
+                    ])
                     .into(),
-                    horizontal_rule(1.).into(),
-                    container(
-                        wrap::Wrap::with_elements(apps)
-                            .spacing(10.0)
-                            .line_spacing(10.0),
+                    horizontal_rule(4.).into(),
+                    scrollable(
+                        container(
+                            wrap::Wrap::with_elements(apps)
+                                .spacing(10.0)
+                                .line_spacing(10.0),
+                        )
+                        .width(Length::Fill)
+                        .center_x(),
                     )
-                    .width(Length::Fill)
-                    .center_x()
                     .into(),
                 ])
                 .spacing(10.0),
@@ -298,20 +306,16 @@ impl Application for BazaarApp {
 
     fn view(&self) -> iced::Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
         container(column(vec![
-            scrollable(
-                column(vec![self.search_view()])
-                    .padding(30.0)
-                    .width(Length::Fill)
-                    .height(Length::Shrink),
-            )
-            .into(),
-            scrollable(
-                column(vec![self.installed_apps_view()])
-                    .padding(30.0)
-                    .width(Length::Fill)
-                    .height(Length::Shrink),
-            )
-            .into(),
+            column(vec![self.search_view()])
+                .padding(30.0)
+                .width(Length::Fill)
+                .height(Length::Shrink)
+                .into(),
+            column(vec![self.installed_apps_view()])
+                .padding(30.0)
+                .width(Length::Fill)
+                .height(Length::Shrink)
+                .into(),
         ]))
         .into()
     }

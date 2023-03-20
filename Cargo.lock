@@ -62,7 +62,7 @@ dependencies = [
 [[package]]
 name = "appstream"
 version = "0.2.2"
-source = "git+https://github.com/bilelmoussaoui/appstream.git#1a5ca157e464219fbe311543dff34e1ef232a775"
+source = "git+https://github.com/bilelmoussaoui/appstream.git?rev=1a5ca157#1a5ca157e464219fbe311543dff34e1ef232a775"
 dependencies = [
  "chrono",
  "serde",
@@ -1567,7 +1567,7 @@ checksum = "99227334921fae1a979cf0bfdfcc6b3e5ce376ef57e16fb6fb3ea2ed6095f80c"
 [[package]]
 name = "libflatpak"
 version = "0.3.0"
-source = "git+https://gitlab.gnome.org/World/Rust/libflatpak-rs.git#287473e20ff9d574c066af7f9f79f1c625e2936a"
+source = "git+https://gitlab.gnome.org/World/Rust/libflatpak-rs.git?rev=287473e2#287473e20ff9d574c066af7f9f79f1c625e2936a"
 dependencies = [
  "bitflags",
  "gio",
@@ -1580,7 +1580,7 @@ dependencies = [
 [[package]]
 name = "libflatpak-sys"
 version = "0.3.0"
-source = "git+https://gitlab.gnome.org/World/Rust/libflatpak-rs.git#287473e20ff9d574c066af7f9f79f1c625e2936a"
+source = "git+https://gitlab.gnome.org/World/Rust/libflatpak-rs.git?rev=287473e2#287473e20ff9d574c066af7f9f79f1c625e2936a"
 dependencies = [
  "gio-sys",
  "glib-sys",
@@ -2462,7 +2462,7 @@ dependencies = [
 [[package]]
 name = "rust-fuzzy-search"
 version = "0.1.1"
-source = "git+https://gitlab.com/EnricoCh/rust-fuzzy-search#ee61779b91ba976bb8da861ff2f1a825f1be1464"
+source = "git+https://gitlab.com/EnricoCh/rust-fuzzy-search?rev=ee61779b9#ee61779b91ba976bb8da861ff2f1a825f1be1464"
 
 [[package]]
 name = "rustc-hash"

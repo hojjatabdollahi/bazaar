@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libflatpak = {git = "https://gitlab.gnome.org/World/Rust/libflatpak-rs.git"}
-appstream = {git = "https://github.com/bilelmoussaoui/appstream.git"}
-rust-fuzzy-search = { git = "https://gitlab.com/EnricoCh/rust-fuzzy-search"}
+libflatpak = {git = "https://gitlab.gnome.org/World/Rust/libflatpak-rs.git", rev="287473e2"}
+appstream = {git = "https://github.com/bilelmoussaoui/appstream.git", rev="1a5ca157"}
+rust-fuzzy-search = { git = "https://gitlab.com/EnricoCh/rust-fuzzy-search", rev="ee61779b9"}
 
 iced = {version = "0.8.0", features=["svg", "image", "tokio"]}
 iced_native = "0.9.1"
