@@ -61,23 +61,26 @@ impl text_input::StyleSheet for SearchBoxStyle {
             background: StyleSheet::from_theme(style).app_card_background.unwrap(),
             border_radius: 20.0,
             border_width: 1.0,
-            border_color: StyleSheet::from_theme(style).accent,
+            border_color: StyleSheet::from_theme(style).border_color,
         }
     }
 
     fn focused(&self, style: &Self::Style) -> text_input::Appearance {
-        self.active(style)
+        text_input::Appearance {
+            border_color: StyleSheet::from_theme(style).accent,
+            ..self.active(style)
+        }
     }
 
-    fn placeholder_color(&self, style: &Self::Style) -> iced::Color {
+    fn placeholder_color(&self, _style: &Self::Style) -> iced::Color {
         iced::Color::from_rgb(0.4, 0.4, 0.4)
     }
 
-    fn value_color(&self, style: &Self::Style) -> iced::Color {
+    fn value_color(&self, _style: &Self::Style) -> iced::Color {
         iced::Color::from_rgb(0.99, 0.99, 0.99)
     }
 
-    fn selection_color(&self, style: &Self::Style) -> iced::Color {
+    fn selection_color(&self, _style: &Self::Style) -> iced::Color {
         iced::Color::from_rgb(0.1, 0.6, 0.6)
     }
 }

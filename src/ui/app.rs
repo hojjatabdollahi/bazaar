@@ -1,13 +1,14 @@
 // use crate::ui::action::refresh;
 use iced::{
-    executor,
+    event, executor,
     futures::channel::mpsc,
-    theme,
+    keyboard::{self, Modifiers},
+    subscription, theme,
     widget::{
         button, column, container, horizontal_rule, horizontal_space, image, row, scrollable, text,
         text_input, Container, Row,
     },
-    window, Application, Length, Settings, Theme,
+    window, Application, Event, Length, Settings, Theme,
 };
 use iced_aw::wrap;
 use std::{
@@ -50,6 +51,7 @@ struct BazaarApp {
     db: Arc<Mutex<Storage>>,
     pub found_apps: Arc<Mutex<RefCell<Vec<Package>>>>,
     search_term: String,
+    scaling_factor: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -58,6 +60,8 @@ enum Message {
     Uninstall(PackageId),
     ActionMessage(action::Message),
     Search(String),
+    IncreaseScalingFactor,
+    DecreaseScalingFactor,
 }
 
 impl BazaarApp {
@@ -171,7 +175,7 @@ impl BazaarApp {
             container(
                 column(vec![
                     row(vec![
-                        text("Installed Apps").size(30).into(),
+                        text("Search").size(30).into(),
                         horizontal_space(Length::Fixed(30.0)).into(),
                         text_input("Search Term", &self.search_term, Message::Search)
                             .padding([4.0, 12.0, 4.0, 12.0])
@@ -249,6 +253,7 @@ impl Application for BazaarApp {
                 db,
                 search_term: Default::default(),
                 found_apps: Default::default(),
+                scaling_factor: 1.0,
             },
             iced::Command::none(),
         )
@@ -259,7 +264,28 @@ impl Application for BazaarApp {
     }
 
     fn subscription(&self) -> iced::Subscription<Self::Message> {
-        action::subscribe().map(Message::ActionMessage)
+        iced::Subscription::batch([
+            action::subscribe().map(Message::ActionMessage),
+            subscription::events_with(|event, status| match (event, status) {
+                (
+                    Event::Keyboard(keyboard::Event::KeyPressed {
+                        key_code: keyboard::KeyCode::Minus,
+                        modifiers: Modifiers::CTRL,
+                        ..
+                    }),
+                    event::Status::Ignored,
+                ) => Some(Message::DecreaseScalingFactor),
+                (
+                    Event::Keyboard(keyboard::Event::KeyPressed {
+                        key_code: keyboard::KeyCode::Equals,
+                        modifiers: Modifiers::CTRL,
+                        ..
+                    }),
+                    event::Status::Ignored,
+                ) => Some(Message::IncreaseScalingFactor),
+                _ => None,
+            }),
+        ])
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
@@ -281,6 +307,12 @@ impl Application for BazaarApp {
                 } else {
                     self.found_apps.lock().unwrap().get_mut().clear();
                 }
+            }
+            Message::IncreaseScalingFactor => {
+                self.scaling_factor += 0.1;
+            }
+            Message::DecreaseScalingFactor => {
+                self.scaling_factor -= 0.1;
             }
             Message::ActionMessage(msg) => match msg {
                 action::Message::Ready(tx) => {
@@ -318,5 +350,9 @@ impl Application for BazaarApp {
                 .into(),
         ]))
         .into()
+    }
+
+    fn scale_factor(&self) -> f64 {
+        self.scaling_factor
     }
 }
