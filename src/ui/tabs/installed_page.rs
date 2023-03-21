@@ -10,14 +10,14 @@ use iced::{
         button, column, container, horizontal_rule, horizontal_space, image, row, scrollable, text,
         Container,
     },
-    Length, Theme,
+    Length,
 };
 use iced_aw::{graphics::icons::Icon, wrap, TabLabel};
 
 use crate::{
     backend::flatpak_backend::Package,
     ui::{
-        appearance::{self, StyleSheet},
+        appearance::{self, Theme},
         main_window::{Config, Message},
     },
 };
@@ -64,21 +64,18 @@ impl InstalledPage {
         .padding(10)
         .center_x()
     }
-    fn style_sheet(&self) -> StyleSheet {
-        appearance::StyleSheet::from_theme(&self.theme())
-    }
     fn app_card(&self, package: &Package) -> iced::Element<Message> {
         container(row(vec![
             self.app_icon(64, &package.icon_path).into(),
             column(vec![
                 text(&package.pretty_name.clone().unwrap_or("".to_string()))
                     .width(Length::Fixed(250.))
-                    .style(theme::Text::Color(self.style_sheet().app_card_text_color))
+                    // .style(theme::Text::Color(self.style_sheet().app_card_text_color))
                     .size(28)
                     .into(),
                 text(&package.summary.clone().unwrap_or(String::from("")))
                     .width(Length::Fixed(250.))
-                    .style(theme::Text::Color(self.style_sheet().app_card_text_color))
+                    // .style(theme::Text::Color(self.style_sheet().app_card_text_color))
                     .size(18)
                     .into(),
             ])
@@ -90,65 +87,60 @@ impl InstalledPage {
                 .into(),
         ]))
         .width(Length::Fixed(300.0))
-        .style(theme::Container::Custom(Box::new(
-            appearance::AppCardStyle {},
-        )))
+        // .style(Theme::Dark)
         .padding(10.0)
         .width(Length::Shrink)
         .height(Length::Shrink)
         .into()
     }
-    fn installed_apps_view(&self) -> iced::Element<Message> {
-        let mut apps = vec![];
-        if let Ok(installed_apps) = self.installed_apps.try_lock() {
-            for package in installed_apps.borrow().iter() {
-                apps.push(self.app_card(&package));
-            }
-            container(
-                column(vec![
-                    row(vec![
-                        text("Installed Apps").size(30).into(),
-                        horizontal_space(Length::Fill).into(),
-                        button(appearance::icon('\u{eb37}'))
-                            .on_press(Message::RequestRefreshInstalledApps)
-                            .padding(10.)
-                            .style(theme::Button::Text)
-                            .into(),
-                    ])
-                    .into(),
-                    horizontal_rule(1.).into(),
-                    scrollable(
-                        container(
-                            wrap::Wrap::with_elements(apps)
-                                .spacing(10.0)
-                                .line_spacing(10.0),
-                        )
-                        .width(Length::Fill)
-                        .center_x(),
-                    )
-                    .into(),
-                ])
-                .spacing(10.0),
-            )
-            .padding(10.0)
-            .style(theme::Container::Custom(Box::new(
-                appearance::SectionsStyle {},
-            )))
-            .into()
-        } else {
-            container(
-                column(vec![
-                    text("Loading").size(30).into(),
-                    horizontal_rule(1.).into(),
-                ])
-                .spacing(10.0),
-            )
-            .padding(10.0)
-            .style(theme::Container::Custom(Box::new(
-                appearance::SectionsStyle {},
-            )))
-            .into()
-        }
+    fn installed_apps_view(&self) -> iced::Element<Message, iced::Renderer<Theme>> {
+        // let mut apps = vec![];
+        // if let Ok(installed_apps) = self.installed_apps.try_lock() {
+        //     for package in installed_apps.borrow().iter() {
+        //         apps.push(self.app_card(&package));
+        //     }
+        //     container(
+        //         column(vec![
+        //             row(vec![
+        //                 text("Installed Apps").size(30).into(),
+        //                 horizontal_space(Length::Fill).into(),
+        //                 button(appearance::icon('\u{eb37}'))
+        //                     .on_press(Message::RequestRefreshInstalledApps)
+        //                     .padding(10.)
+        //                     // .style(theme::Button::Text)
+        //                     .into(),
+        //             ])
+        //             .into(),
+        //             horizontal_rule(1.).into(),
+        //             scrollable(
+        //                 container(
+        //                     wrap::Wrap::with_elements(apps)
+        //                         .spacing(10.0)
+        //                         .line_spacing(10.0),
+        //                 )
+        //                 .width(Length::Fill)
+        //                 .center_x(),
+        //             )
+        //             .into(),
+        //         ])
+        //         .spacing(10.0),
+        //     )
+        //     .padding(10.0)
+        //     // .style(Theme::Dark)
+        //     .into()
+        // } else {
+        //     container(
+        //         column(vec![
+        //             text("Loading").size(30).into(),
+        //             horizontal_rule(1.).into(),
+        //         ])
+        //         .spacing(10.0),
+        //     )
+        //     .padding(10.0)
+        //     // .style(Theme::Dark.into())
+        //     .into()
+        // }
+        container(text("hello")).into()
     }
 }
 
@@ -163,7 +155,7 @@ impl Tab for InstalledPage {
         TabLabel::IconText(Icon::Check.into(), self.title())
     }
 
-    fn theme(&self) -> iced::Theme {
+    fn theme(&self) -> Theme {
         if self.config.dark_mode {
             Theme::Dark
         } else {
@@ -171,7 +163,7 @@ impl Tab for InstalledPage {
         }
     }
 
-    fn view(&self) -> iced::Element<Self::Message> {
+    fn view(&self) -> iced::Element<Self::Message, iced::Renderer<Theme>> {
         self.installed_apps_view().into()
     }
 }

@@ -2,16 +2,19 @@ use iced::{
     event, executor,
     futures::channel::mpsc,
     keyboard::{self, Modifiers},
-    subscription, window, Application, Event, Settings, Theme,
+    subscription,
+    widget::{container, text},
+    window, Application, Event, Settings,
 };
-use iced_aw::{tabs::TabBarStyles, TabBar, Tabs};
+
+use iced_aw::{tabs::TabBarStyles, Tabs};
 use std::sync::{Arc, Mutex};
 
 use crate::{backend::flatpak_backend::PackageId, db::Storage};
 
 use super::{action, appearance};
 use super::{
-    appearance::CustomTabBarStyles,
+    appearance::Theme,
     tabs::{
         installed_page::{InstalledPage, InstalledPageMessage},
         landing_page::{LandingPage, LandingPageMessage},
@@ -172,20 +175,25 @@ impl Application for BazaarApp {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        TabBar::new(self.active_tab, Message::TabSelected)
-            .push(self.landing_page.tab_label())
-            .push(self.installed_page.tab_label())
-            .style(CustomTabBarStyles::Dark)
-            .into()
-        // Tabs::new(self.active_tab, Message::TabSelected)
-        //     .push(self.landing_page.tab_label(), self.landing_page.view())
-        //     .push(self.installed_page.tab_label(), self.installed_page.view())
-        //     .tab_bar_style(if self.config.dark_mode {
-        //         CustomTabBarStyles::Dark
-        //     } else {
-        //         TabBarStyles::Blue
-        //     })
+        // TabBar::new(self.active_tab, Message::TabSelected)
+        //     .push(self.landing_page.tab_label())
+        //     .push(self.installed_page.tab_label())
+        //     .style(CustomTabBarStyles::Dark)
         //     .into()
+        Tabs::new(self.active_tab, Message::TabSelected)
+            .push(self.landing_page.tab_label(), self.landing_page.view())
+            .push(self.installed_page.tab_label(), self.installed_page.view())
+            // .tab_bar_style(if self.config.dark_mode {
+            //     Theme::Dark
+            // } else {
+            //     Theme::Light
+            // })
+            .into()
+        // container(
+        //     Tabs::new(0, Message::TabSelected), //     .push(self.landing_page.tab_label(), self.landing_page.view()),
+        //                                         // self.landing_page.view(),
+        // )
+        // .into()
     }
 
     fn scale_factor(&self) -> f64 {
