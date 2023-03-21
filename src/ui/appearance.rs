@@ -85,6 +85,55 @@ impl text_input::StyleSheet for SearchBoxStyle {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum CustomTabBarStyles {
+    #[default]
+    Dark,
+    Light,
+}
+
+impl iced_aw::style::tab_bar::StyleSheet for CustomTabBarStyles {
+    type Style = CustomTabBarStyles;
+
+    fn active(&self, style: Self::Style, _is_active: bool) -> iced_aw::style::tab_bar::Appearance {
+        let style = match style {
+            CustomTabBarStyles::Dark => iced::Theme::Dark,
+            _ => iced::Theme::Light,
+        };
+        iced_aw::style::tab_bar::Appearance {
+            background: super::appearance::StyleSheet::from_theme(&style).app_card_background,
+            border_color: Some(super::appearance::StyleSheet::from_theme(&style).border_color),
+            border_width: 1.0,
+            tab_label_background: super::appearance::StyleSheet::from_theme(&style)
+                .app_card_background
+                .unwrap(),
+            tab_label_border_color: super::appearance::StyleSheet::from_theme(&style).border_color,
+            tab_label_border_width: 1.0,
+            icon_color: super::appearance::StyleSheet::from_theme(&style).border_color,
+            text_color: super::appearance::StyleSheet::from_theme(&style).app_card_text_color,
+        }
+    }
+
+    fn hovered(&self, style: Self::Style, is_active: bool) -> iced_aw::style::tab_bar::Appearance {
+        let style = match style {
+            CustomTabBarStyles::Dark => iced::Theme::Dark,
+            _ => iced::Theme::Light,
+        };
+        iced_aw::style::tab_bar::Appearance {
+            background: super::appearance::StyleSheet::from_theme(&style).app_card_background,
+            border_color: Some(super::appearance::StyleSheet::from_theme(&style).border_color),
+            border_width: 1.0,
+            tab_label_background: super::appearance::StyleSheet::from_theme(&style)
+                .app_card_background
+                .unwrap(),
+            tab_label_border_color: super::appearance::StyleSheet::from_theme(&style).border_color,
+            tab_label_border_width: 1.0,
+            icon_color: super::appearance::StyleSheet::from_theme(&style).border_color,
+            text_color: super::appearance::StyleSheet::from_theme(&style).app_card_text_color,
+        }
+    }
+}
+
 pub struct StyleSheet {
     pub app_name_size: f32,
     pub app_card_text_color: iced::Color,

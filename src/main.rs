@@ -11,5 +11,5 @@ fn main() -> iced::Result {
         d.create_table().unwrap();
         backend::flatpak_backend::get_packages_remote(&d);
     }
-    ui::app::run()
+    ui::main_window::run()
 }

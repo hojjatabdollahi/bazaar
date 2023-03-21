@@ -13,9 +13,10 @@ rust-fuzzy-search = { git = "https://gitlab.com/EnricoCh/rust-fuzzy-search", rev
 iced = {version = "0.8.0", features=["svg", "image", "tokio"]}
 iced_native = "0.9.1"
 iced_futures = "0.6.0"
-iced_aw = "0.4.1"
+iced_aw = {version="0.4.1", default-features=false, features=["wrap", "tabs"]}
 
 lazy_static = "1.4.0"
+iced_style = "0.7.0"
 
 [dependencies.rusqlite]
 version = "0.28.0"
