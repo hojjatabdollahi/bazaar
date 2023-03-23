@@ -59,7 +59,11 @@ impl LandingPage {
         }
     }
 
-    fn app_icon<'a>(&self, width: u16, path: &Option<PathBuf>) -> Container<'a, Message> {
+    fn app_icon<'a>(
+        &self,
+        width: u16,
+        path: &Option<PathBuf>,
+    ) -> Container<'a, Message, iced::Renderer<Theme>> {
         let path = path
             .clone()
             .unwrap_or(format!("{}/resources/DefaultApp.png", env!("CARGO_MANIFEST_DIR")).into());
@@ -75,7 +79,7 @@ impl LandingPage {
     // fn style_sheet(&self) -> StyleSheet {
     //     appearance::StyleSheet::from_theme(&self.theme())
     // }
-    fn app_card(&self, package: &Package) -> iced::Element<Message> {
+    fn app_card(&self, package: &Package) -> iced::Element<Message, iced::Renderer<Theme>> {
         container(row(vec![
             self.app_icon(64, &package.icon_path).into(),
             column(vec![
@@ -108,58 +112,58 @@ impl LandingPage {
     }
 
     fn search_view(&self) -> iced::Element<Message, iced::Renderer<Theme>> {
-        // let mut apps = vec![];
-        // if let Ok(found_apps) = self.found_apps.try_lock() {
-        //     for package in found_apps.borrow().iter() {
-        //         apps.push(self.app_card(&package));
-        //     }
-        //
-        //     container(
-        //         column(vec![
-        //             row(vec![
-        //                 text("Search").size(30).into(),
-        //                 horizontal_space(Length::Fixed(30.0)).into(),
-        //                 text_input("Search Term", &self.search_term, Message::Search)
-        //                     .padding([4.0, 12.0, 4.0, 12.0])
-        //                     // .style(theme::TextInput::Custom(Box::new(
-        //                     //     appearance::SearchBoxStyle {},
-        //                     // )))
-        //                     .into(),
-        //             ])
-        //             .into(),
-        //             horizontal_rule(4.).into(),
-        //             scrollable(
-        //                 container(
-        //                     wrap::Wrap::with_elements(apps)
-        //                         .spacing(10.0)
-        //                         .line_spacing(10.0),
-        //                 )
-        //                 .width(Length::Fill)
-        //                 .center_x(),
-        //             )
-        //             .into(),
-        //         ])
-        //         .spacing(10.0),
-        //     )
-        //     .padding(10.0)
-        //     // .style(theme::Container::Custom(Box::new(
-        //     //     appearance::SectionsStyle {},
-        //     // )))
-        //     .into()
-        // } else {
-        container(
-            column(vec![
-                text("Loading").size(30).into(),
-                horizontal_rule(1.).into(),
-            ])
-            .spacing(10.0),
-        )
-        .padding(10.0)
-        // .style(theme::Container::Custom(Box::new(
-        //     appearance::SectionsStyle {},
-        // )))
-        .into()
-        // }
+        let mut apps = vec![];
+        if let Ok(found_apps) = self.found_apps.try_lock() {
+            for package in found_apps.borrow().iter() {
+                apps.push(self.app_card(&package));
+            }
+
+            container(
+                column(vec![
+                    row(vec![
+                        text("Search").size(30).into(),
+                        horizontal_space(Length::Fixed(30.0)).into(),
+                        text_input("Search Term", &self.search_term, Message::Search)
+                            .padding([4.0, 12.0, 4.0, 12.0])
+                            // .style(theme::TextInput::Custom(Box::new(
+                            //     appearance::SearchBoxStyle {},
+                            // )))
+                            .into(),
+                    ])
+                    .into(),
+                    horizontal_rule(4.).into(),
+                    scrollable(
+                        container(
+                            wrap::Wrap::with_elements(apps)
+                                .spacing(10.0)
+                                .line_spacing(10.0),
+                        )
+                        .width(Length::Fill)
+                        .center_x(),
+                    )
+                    .into(),
+                ])
+                .spacing(10.0),
+            )
+            .padding(10.0)
+            // .style(theme::Container::Custom(Box::new(
+            //     appearance::SectionsStyle {},
+            // )))
+            .into()
+        } else {
+            container(
+                column(vec![
+                    text("Loading").size(30).into(),
+                    horizontal_rule(1.).into(),
+                ])
+                .spacing(10.0),
+            )
+            .padding(10.0)
+            // .style(theme::Container::Custom(Box::new(
+            //     appearance::SectionsStyle {},
+            // )))
+            .into()
+        }
     }
 }
 

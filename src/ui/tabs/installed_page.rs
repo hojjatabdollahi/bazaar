@@ -51,7 +51,11 @@ impl InstalledPage {
         }
     }
 
-    fn app_icon<'a>(&self, width: u16, path: &Option<PathBuf>) -> Container<'a, Message> {
+    fn app_icon<'a>(
+        &self,
+        width: u16,
+        path: &Option<PathBuf>,
+    ) -> Container<'a, Message, iced::Renderer<Theme>> {
         let path = path
             .clone()
             .unwrap_or(format!("{}/resources/DefaultApp.png", env!("CARGO_MANIFEST_DIR")).into());
@@ -64,7 +68,7 @@ impl InstalledPage {
         .padding(10)
         .center_x()
     }
-    fn app_card(&self, package: &Package) -> iced::Element<Message> {
+    fn app_card(&self, package: &Package) -> iced::Element<Message, iced::Renderer<Theme>> {
         container(row(vec![
             self.app_icon(64, &package.icon_path).into(),
             column(vec![
@@ -83,7 +87,7 @@ impl InstalledPage {
             .into(),
             button(appearance::icon('\u{f1767}'))
                 .on_press(Message::Uninstall(package.name.clone()))
-                .style(theme::Button::Text)
+                // .style(theme::Button::Text)
                 .into(),
         ]))
         .width(Length::Fixed(300.0))
@@ -94,53 +98,52 @@ impl InstalledPage {
         .into()
     }
     fn installed_apps_view(&self) -> iced::Element<Message, iced::Renderer<Theme>> {
-        // let mut apps = vec![];
-        // if let Ok(installed_apps) = self.installed_apps.try_lock() {
-        //     for package in installed_apps.borrow().iter() {
-        //         apps.push(self.app_card(&package));
-        //     }
-        //     container(
-        //         column(vec![
-        //             row(vec![
-        //                 text("Installed Apps").size(30).into(),
-        //                 horizontal_space(Length::Fill).into(),
-        //                 button(appearance::icon('\u{eb37}'))
-        //                     .on_press(Message::RequestRefreshInstalledApps)
-        //                     .padding(10.)
-        //                     // .style(theme::Button::Text)
-        //                     .into(),
-        //             ])
-        //             .into(),
-        //             horizontal_rule(1.).into(),
-        //             scrollable(
-        //                 container(
-        //                     wrap::Wrap::with_elements(apps)
-        //                         .spacing(10.0)
-        //                         .line_spacing(10.0),
-        //                 )
-        //                 .width(Length::Fill)
-        //                 .center_x(),
-        //             )
-        //             .into(),
-        //         ])
-        //         .spacing(10.0),
-        //     )
-        //     .padding(10.0)
-        //     // .style(Theme::Dark)
-        //     .into()
-        // } else {
-        //     container(
-        //         column(vec![
-        //             text("Loading").size(30).into(),
-        //             horizontal_rule(1.).into(),
-        //         ])
-        //         .spacing(10.0),
-        //     )
-        //     .padding(10.0)
-        //     // .style(Theme::Dark.into())
-        //     .into()
-        // }
-        container(text("hello")).into()
+        let mut apps = vec![];
+        if let Ok(installed_apps) = self.installed_apps.try_lock() {
+            for package in installed_apps.borrow().iter() {
+                apps.push(self.app_card(&package));
+            }
+            container(
+                column(vec![
+                    row(vec![
+                        text("Installed Apps").size(30).into(),
+                        horizontal_space(Length::Fill).into(),
+                        button(appearance::icon('\u{eb37}'))
+                            .on_press(Message::RequestRefreshInstalledApps)
+                            .padding(10.)
+                            // .style(theme::Button::Text)
+                            .into(),
+                    ])
+                    .into(),
+                    horizontal_rule(1.).into(),
+                    scrollable(
+                        container(
+                            wrap::Wrap::with_elements(apps)
+                                .spacing(10.0)
+                                .line_spacing(10.0),
+                        )
+                        .width(Length::Fill)
+                        .center_x(),
+                    )
+                    .into(),
+                ])
+                .spacing(10.0),
+            )
+            .padding(10.0)
+            // .style(Theme::Dark)
+            .into()
+        } else {
+            container(
+                column(vec![
+                    text("Loading").size(30).into(),
+                    horizontal_rule(1.).into(),
+                ])
+                .spacing(10.0),
+            )
+            .padding(10.0)
+            // .style(Theme::Dark.into())
+            .into()
+        }
     }
 }
 

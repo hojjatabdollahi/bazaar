@@ -12,7 +12,7 @@ const ICONS: Font = Font::External {
 
 pub const NOTO_SANS: &[u8; 556216] = include_bytes!("../../fonts/noto_sans.ttf");
 
-pub fn icon(unicode: char) -> Text<'static> {
+pub fn icon(unicode: char) -> Text<'static, iced::Renderer<Theme>> {
     text(unicode.to_string())
         .font(ICONS)
         .width(20)
