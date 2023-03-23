@@ -15,6 +15,10 @@ iced_native = "0.9.1"
 iced_futures = "0.6.0"
 iced_aw = {version="0.4.1", default-features=false, features=["wrap", "tabs"]}
 
+cosmic-time = {git="https://github.com/pop-os/cosmic-time", rev = "66685b01"}
+
+once_cell = "1.15"
+
 lazy_static = "1.4.0"
 iced_style = "0.7.0"
 

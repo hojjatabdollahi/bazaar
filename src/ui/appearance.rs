@@ -32,6 +32,7 @@ pub struct Colors {
     pub text: Color,
     pub accent: Color,
     pub border: Color,
+    pub border_low_contrast: Color,
 }
 
 impl Colors {
@@ -39,13 +40,15 @@ impl Colors {
         background: Color::from_rgb(0.2, 0.2, 0.2),
         text: Color::from_rgb(0.9, 0.9, 0.9),
         accent: iced::Color::from_rgb(1.0, 0.72, 0.29),
-        border: iced::Color::from_rgb(0.1, 0.1, 0.1),
+        border: iced::Color::from_rgb(0.3, 0.3, 0.3),
+        border_low_contrast: iced::Color::from_rgb(0.1, 0.1, 0.1),
     };
     pub const LIGHT: Self = Self {
         background: Color::from_rgb(0.9, 0.9, 0.9),
         text: Color::from_rgb(0.2, 0.2, 0.2),
         accent: iced::Color::from_rgb(1.0, 0.72, 0.29),
-        border: iced::Color::from_rgb(0.8, 0.8, 0.8),
+        border: iced::Color::from_rgb(0.6, 0.6, 0.6),
+        border_low_contrast: iced::Color::from_rgb(0.8, 0.8, 0.8),
     };
 }
 
@@ -69,15 +72,28 @@ impl application::StyleSheet for Theme {
     }
 }
 
+#[derive(Default)]
+pub enum ContainerStyle {
+    #[default]
+    Default,
+    AppCard,
+    Section,
+}
+
 impl container::StyleSheet for Theme {
-    type Style = ();
-    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
+    type Style = ContainerStyle;
+    fn appearance(&self, style: &Self::Style) -> container::Appearance {
+        let border_color = match style {
+            ContainerStyle::Default => self.colors().background,
+            ContainerStyle::AppCard => self.colors().border,
+            ContainerStyle::Section => self.colors().border,
+        };
         container::Appearance {
             border_radius: 20.0,
             border_width: 2.0,
-            border_color: self.colors().background,
+            border_color,
             background: Some(Background::Color(self.colors().background)),
-            ..container::Appearance::default()
+            text_color: None,
         }
     }
 }
@@ -87,7 +103,7 @@ impl text::StyleSheet for Theme {
 
     fn appearance(&self, style: Self::Style) -> text::Appearance {
         text::Appearance {
-            color: Some(self.colors().accent),
+            color: Some(self.colors().text),
         }
     }
 }
@@ -144,7 +160,7 @@ impl text_input::StyleSheet for Theme {
             background: Background::Color(self.colors().background),
             border_radius: 20.0,
             border_width: 1.0,
-            border_color: self.colors().background,
+            border_color: self.colors().border,
         }
     }
 

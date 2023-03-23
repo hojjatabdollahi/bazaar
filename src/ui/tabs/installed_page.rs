@@ -17,7 +17,7 @@ use iced_aw::{graphics::icons::Icon, wrap, TabLabel};
 use crate::{
     backend::flatpak_backend::Package,
     ui::{
-        appearance::{self, Theme},
+        appearance::{self, ContainerStyle, Theme},
         main_window::{Config, Message},
     },
 };
@@ -91,7 +91,7 @@ impl InstalledPage {
                 .into(),
         ]))
         .width(Length::Fixed(300.0))
-        // .style(Theme::Dark)
+        .style(ContainerStyle::AppCard)
         .padding(10.0)
         .width(Length::Shrink)
         .height(Length::Shrink)
@@ -130,7 +130,7 @@ impl InstalledPage {
                 .spacing(10.0),
             )
             .padding(10.0)
-            // .style(Theme::Dark)
+            .style(ContainerStyle::Section)
             .into()
         } else {
             container(
@@ -141,7 +141,7 @@ impl InstalledPage {
                 .spacing(10.0),
             )
             .padding(10.0)
-            // .style(Theme::Dark.into())
+            .style(ContainerStyle::Section)
             .into()
         }
     }

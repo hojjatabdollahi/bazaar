@@ -2,59 +2,95 @@ use std::{
     cell::RefCell,
     path::PathBuf,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
+use cosmic_time::{keyframes, Ease, Timeline};
 use iced::{
     widget::{
-        button, column, container, horizontal_rule, horizontal_space, image, row, scrollable, text,
-        text_input, Container,
+        self, button, column, container, horizontal_rule, horizontal_space, image, row, scrollable,
+        text, text_input, Container,
     },
-    Length,
+    Command, Length,
 };
 use iced_aw::{graphics::icons::Icon, wrap, TabLabel};
+use once_cell::sync::Lazy;
 
 use super::Tab;
 use crate::{
     backend::flatpak_backend::Package,
     ui::{
-        appearance::{self, Theme},
+        appearance::{self, ContainerStyle, Theme},
         main_window::{Config, Message},
     },
 };
+
+static CONTAINER: Lazy<keyframes::container::Id> = Lazy::new(keyframes::container::Id::unique);
+
+fn anim_searchbox_open() -> cosmic_time::container::Chain {
+    cosmic_time::container::Chain::new(CONTAINER.clone())
+        .link(keyframes::Container::new(Duration::ZERO).width(Length::Fixed(0.)))
+        .link(
+            keyframes::Container::new(Duration::from_millis(200))
+                .width(Length::Fixed(400.))
+                .ease(Ease::Exponential(cosmic_time::Exponential::InOut)),
+        )
+}
 
 pub struct LandingPage {
     pub search_term: String,
     pub found_apps: Arc<Mutex<RefCell<Vec<Package>>>>,
     theme: Theme,
     config: Config,
+    pub timeline: Timeline,
+    status: Status,
+}
+
+enum Status {
+    Default,
+    Searching,
 }
 
 pub enum LandingPageMessage {
     Search(String),
     Found(Arc<Vec<Package>>),
+    SearchButton,
 }
 
 impl LandingPage {
     pub fn new(config: Config) -> Self {
+        let timeline = Timeline::new();
         Self {
             search_term: Default::default(),
             found_apps: Default::default(),
             theme: Default::default(),
             config,
+            timeline,
+            status: Status::Default,
         }
     }
 
-    pub fn update(&mut self, message: LandingPageMessage) {
+    pub fn update(&mut self, message: LandingPageMessage) -> Command<Message> {
         match message {
             LandingPageMessage::Search(st) => {
                 if st.len() < 3 {
                     self.found_apps.lock().unwrap().get_mut().clear();
                 }
                 self.search_term = st;
+                Command::none()
             }
             LandingPageMessage::Found(apps) => {
                 println!("Found apps:{}", apps.len());
                 *self.found_apps.lock().unwrap().borrow_mut() = Arc::try_unwrap(apps).unwrap();
+                Command::none()
+            }
+            LandingPageMessage::SearchButton => {
+                self.status = Status::Searching;
+                self.timeline
+                    .set_chain(anim_searchbox_open())
+                    .resume(CONTAINER.clone())
+                    .start();
+                widget::focus_next()
             }
         }
     }
@@ -101,6 +137,7 @@ impl LandingPage {
                 // .style(theme::Button::Text)
                 .into(),
         ]))
+        .style(ContainerStyle::AppCard)
         .width(Length::Fixed(300.0))
         // .style(theme::Container::Custom(Box::new(
         //     appearance::AppCardStyle {},
@@ -121,14 +158,19 @@ impl LandingPage {
             container(
                 column(vec![
                     row(vec![
-                        text("Search").size(30).into(),
-                        horizontal_space(Length::Fixed(30.0)).into(),
-                        text_input("Search Term", &self.search_term, Message::Search)
-                            .padding([4.0, 12.0, 4.0, 12.0])
-                            // .style(theme::TextInput::Custom(Box::new(
-                            //     appearance::SearchBoxStyle {},
-                            // )))
+                        match self.status {
+                            Status::Searching => keyframes::Container::as_widget(
+                                CONTAINER.clone(),
+                                &self.timeline,
+                                text_input("Search Term", &self.search_term, Message::Search)
+                                    .padding([4.0, 12.0, 4.0, 12.0]),
+                            )
                             .into(),
+                            Status::Default => button(appearance::icon('\u{ea6d}'))
+                                .on_press(Message::SearchButton)
+                                .into(),
+                        },
+                        horizontal_space(Length::Fill).into(),
                     ])
                     .into(),
                     horizontal_rule(4.).into(),
@@ -145,6 +187,7 @@ impl LandingPage {
                 ])
                 .spacing(10.0),
             )
+            .style(ContainerStyle::Section)
             .padding(10.0)
             // .style(theme::Container::Custom(Box::new(
             //     appearance::SectionsStyle {},
@@ -158,6 +201,7 @@ impl LandingPage {
                 ])
                 .spacing(10.0),
             )
+            .style(ContainerStyle::Default)
             .padding(10.0)
             // .style(theme::Container::Custom(Box::new(
             //     appearance::SectionsStyle {},

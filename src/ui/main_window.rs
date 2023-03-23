@@ -1,14 +1,18 @@
+use cosmic_time::{keyframes, Timeline};
 use iced::{
     event, executor,
     futures::channel::mpsc,
     keyboard::{self, Modifiers},
     subscription,
-    widget::{container, text},
-    window, Application, Event, Settings,
+    widget::{column, container, text},
+    window, Alignment, Application, Event, Length, Settings,
 };
 
-use iced_aw::{tabs::TabBarStyles, Tabs};
-use std::sync::{Arc, Mutex};
+use iced_aw::{tabs::TabBarStyles, TabBar, Tabs};
+use std::{
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 
 use crate::{backend::flatpak_backend::PackageId, db::Storage};
 
@@ -21,6 +25,9 @@ use super::{
         Tab,
     },
 };
+
+use once_cell::sync::Lazy;
+static CONTAINER: Lazy<keyframes::container::Id> = Lazy::new(keyframes::container::Id::unique);
 
 pub fn run() -> iced::Result {
     BazaarApp::run(Settings {
@@ -47,6 +54,7 @@ struct BazaarApp {
     landing_page: LandingPage,
     installed_page: InstalledPage,
     active_tab: usize,
+    timeline: Timeline,
 }
 
 #[derive(Debug, Clone)]
@@ -55,9 +63,11 @@ pub enum Message {
     Uninstall(PackageId),
     ActionMessage(action::Message),
     Search(String),
+    SearchButton,
     IncreaseScalingFactor,
     DecreaseScalingFactor,
     TabSelected(usize),
+    Tick(Instant),
 }
 
 impl Application for BazaarApp {
@@ -84,6 +94,12 @@ impl Application for BazaarApp {
         db.all_packages = Some(db.all_names().unwrap());
         let config = Config { dark_mode: true };
         let db = Arc::new(Mutex::new(db));
+        let mut timeline = Timeline::new();
+        let animation = cosmic_time::container::Chain::new(CONTAINER.clone())
+            .link(keyframes::Container::new(Duration::ZERO).width(Length::Fixed(0.)))
+            .link(keyframes::Container::new(Duration::from_millis(700)).width(Length::Fixed(800.)));
+        timeline.set_chain(animation).start();
+
         (
             BazaarApp {
                 config: config.clone(),
@@ -93,6 +109,7 @@ impl Application for BazaarApp {
                 landing_page: LandingPage::new(config.clone()),
                 installed_page: InstalledPage::new(config.clone()),
                 active_tab: Default::default(),
+                timeline,
             },
             iced::Command::none(),
         )
@@ -105,6 +122,10 @@ impl Application for BazaarApp {
     fn subscription(&self) -> iced::Subscription<Self::Message> {
         iced::Subscription::batch([
             action::subscribe().map(Message::ActionMessage),
+            self.landing_page
+                .timeline
+                .as_subscription::<Event>()
+                .map(Message::Tick),
             subscription::events_with(|event, status| match (event, status) {
                 (
                     Event::Keyboard(keyboard::Event::KeyPressed {
@@ -163,37 +184,33 @@ impl Application for BazaarApp {
                         .update(InstalledPageMessage::Refreshed(apps));
                 }
                 action::Message::Found(apps) => {
-                    self.landing_page.update(LandingPageMessage::Found(apps));
+                    return self.landing_page.update(LandingPageMessage::Found(apps));
                 }
                 action::Message::Uninstalled(id) => {
                     println!("Uninstalled {:?}", id);
                     let _ = self.action.start_send(action::Action::RefreshInstalled);
                 }
             },
+            Message::Tick(now) => self.landing_page.timeline.now(now),
+            Message::SearchButton => {
+                return self.landing_page.update(LandingPageMessage::SearchButton);
+            }
         }
         iced::Command::none()
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        // TabBar::new(self.active_tab, Message::TabSelected)
-        //     .push(self.landing_page.tab_label())
-        //     .push(self.installed_page.tab_label())
-        //     .style(CustomTabBarStyles::Dark)
-        //     .into()
-        Tabs::new(self.active_tab, Message::TabSelected)
-            .push(self.landing_page.tab_label(), self.landing_page.view())
-            .push(self.installed_page.tab_label(), self.installed_page.view())
-            // .tab_bar_style(if self.config.dark_mode {
-            //     Theme::Dark
-            // } else {
-            //     Theme::Light
-            // })
-            .into()
-        // container(
-        //     Tabs::new(0, Message::TabSelected), //     .push(self.landing_page.tab_label(), self.landing_page.view()),
-        //                                         // self.landing_page.view(),
-        // )
-        // .into()
+        container(
+            column(vec![
+                self.landing_page.view().into(),
+                self.installed_page.view().into(),
+            ])
+            .spacing(10.),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .padding(10.0)
+        .into()
     }
 
     fn scale_factor(&self) -> f64 {

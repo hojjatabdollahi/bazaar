@@ -118,6 +118,7 @@ name = "bazaar"
 version = "0.1.0"
 dependencies = [
  "appstream",
+ "cosmic-time",
  "iced",
  "iced_aw",
  "iced_futures",
@@ -125,6 +126,7 @@ dependencies = [
  "iced_style",
  "lazy_static",
  "libflatpak",
+ "once_cell",
  "rusqlite",
  "rust-fuzzy-search",
 ]
@@ -404,6 +406,18 @@ dependencies = [
  "core-graphics",
  "foreign-types 0.3.2",
  "libc",
+]
+
+[[package]]
+name = "cosmic-time"
+version = "0.1.0"
+source = "git+https://github.com/pop-os/cosmic-time?rev=66685b01#66685b01f10f452510442bdbf3d50337b5450343"
+dependencies = [
+ "iced",
+ "iced_core",
+ "iced_futures",
+ "iced_native",
+ "iced_style",
 ]
 
 [[package]]
