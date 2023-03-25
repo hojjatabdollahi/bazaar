@@ -4,8 +4,8 @@ use iced::{
     futures::channel::mpsc,
     keyboard::{self, Modifiers},
     subscription,
-    widget::{column, container, text},
-    window, Alignment, Application, Event, Length, Settings,
+    widget::{button, column, container, text},
+    window, Alignment, Application, Color, Element, Event, Length, Settings,
 };
 
 use iced_aw::{tabs::TabBarStyles, TabBar, Tabs};
@@ -16,7 +16,7 @@ use std::{
 
 use crate::{backend::flatpak_backend::PackageId, db::Storage};
 
-use super::{action, appearance};
+use super::{action, appearance, tabs::app_view::AppView};
 use super::{
     appearance::Theme,
     tabs::{
@@ -53,14 +53,22 @@ struct BazaarApp {
     scaling_factor: f64,
     landing_page: LandingPage,
     installed_page: InstalledPage,
+    app_view_page: AppView,
     active_tab: usize,
     timeline: Timeline,
+    current_page: Page,
+}
+
+pub enum Page {
+    LandingPage,
+    Detail,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     RequestRefreshInstalledApps,
     Uninstall(PackageId),
+    Detail,
     ActionMessage(action::Message),
     Search(String),
     SearchButton,
@@ -108,8 +116,10 @@ impl Application for BazaarApp {
                 scaling_factor: 1.0,
                 landing_page: LandingPage::new(config.clone()),
                 installed_page: InstalledPage::new(config.clone()),
+                app_view_page: AppView::new(config.clone()),
                 active_tab: Default::default(),
                 timeline,
+                current_page: Page::LandingPage,
             },
             iced::Command::none(),
         )
@@ -175,6 +185,9 @@ impl Application for BazaarApp {
             Message::TabSelected(new_tab) => {
                 self.active_tab = new_tab;
             }
+            Message::Detail => {
+                self.current_page = Page::Detail;
+            }
             Message::ActionMessage(msg) => match msg {
                 action::Message::Ready(tx) => {
                     self.action = tx;
@@ -200,13 +213,14 @@ impl Application for BazaarApp {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        container(
-            column(vec![
+        container(match self.current_page {
+            Page::LandingPage => column(vec![
                 self.landing_page.view().into(),
                 self.installed_page.view().into(),
             ])
             .spacing(10.),
-        )
+            Page::Detail => column(vec![self.app_view_page.view().into()]),
+        })
         .width(Length::Fill)
         .height(Length::Fill)
         .padding(10.0)

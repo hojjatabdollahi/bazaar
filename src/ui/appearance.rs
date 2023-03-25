@@ -1,7 +1,7 @@
 use iced::{
     alignment, application,
     widget::{button, container, horizontal_rule, scrollable, text, text_input, Text},
-    Background, Color, Font,
+    Background, Color, Font, Vector,
 };
 use iced_style::scrollable::Scroller;
 
@@ -121,11 +121,42 @@ impl iced::widget::rule::StyleSheet for Theme {
     }
 }
 
+#[derive(Default)]
+pub enum ButtonStyle {
+    #[default]
+    Default,
+    Icon,
+}
+
 impl button::StyleSheet for Theme {
-    type Style = ();
+    type Style = ButtonStyle;
 
     fn active(&self, style: &Self::Style) -> iced_style::button::Appearance {
-        button::Appearance::default()
+        let border_color = match style {
+            ButtonStyle::Default => self.colors().border,
+            ButtonStyle::Icon => Color::TRANSPARENT,
+        };
+        button::Appearance {
+            shadow_offset: Vector::default(),
+            background: None,
+            border_radius: 1.0,
+            border_width: 1.0,
+            border_color,
+            text_color: self.colors().accent,
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style) -> iced_style::button::Appearance {
+        let active = self.active(style);
+
+        iced_style::button::Appearance {
+            background: None,
+            ..active
+        }
+    }
+
+    fn pressed(&self, style: &Self::Style) -> button::Appearance {
+        self.active(style)
     }
 }
 
@@ -200,7 +231,11 @@ impl iced_aw::tabs::StyleSheet for Theme {
         }
     }
 
-    fn hovered(&self, _style: Self::Style, is_active: bool) -> iced_aw::style::tab_bar::Appearance {
+    fn hovered(
+        &self,
+        _style: Self::Style,
+        _is_active: bool,
+    ) -> iced_aw::style::tab_bar::Appearance {
         iced_aw::style::tab_bar::Appearance::default()
     }
 }

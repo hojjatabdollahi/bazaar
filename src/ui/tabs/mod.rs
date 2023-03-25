@@ -3,6 +3,7 @@ use iced_aw::TabLabel;
 
 use super::appearance::Theme;
 
+pub mod app_view;
 pub mod installed_page;
 pub mod landing_page;
 

@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 use crate::db::Storage;
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub enum PackageKind {
     #[default]
     App,
@@ -52,7 +52,7 @@ impl From<RefKind> for PackageKind {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Package {
     pub name: PackageId,
     pub pretty_name: Option<String>,

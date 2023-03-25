@@ -7,6 +7,7 @@ use std::{
 
 use cosmic_time::{keyframes, Ease, Timeline};
 use iced::{
+    mouse::Button,
     widget::{
         self, button, column, container, horizontal_rule, horizontal_space, image, row, scrollable,
         text, text_input, Container,
@@ -20,7 +21,7 @@ use super::Tab;
 use crate::{
     backend::flatpak_backend::Package,
     ui::{
-        appearance::{self, ContainerStyle, Theme},
+        appearance::{self, ButtonStyle, ContainerStyle, Theme},
         main_window::{Config, Message},
     },
 };
@@ -134,7 +135,7 @@ impl LandingPage {
             .into(),
             button(appearance::icon('\u{f1767}'))
                 .on_press(Message::Uninstall(package.name.clone()))
-                // .style(theme::Button::Text)
+                .style(ButtonStyle::Icon)
                 .into(),
         ]))
         .style(ContainerStyle::AppCard)
@@ -167,6 +168,7 @@ impl LandingPage {
                             )
                             .into(),
                             Status::Default => button(appearance::icon('\u{ea6d}'))
+                                .style(ButtonStyle::Icon)
                                 .on_press(Message::SearchButton)
                                 .into(),
                         },

@@ -17,7 +17,7 @@ use iced_aw::{graphics::icons::Icon, wrap, TabLabel};
 use crate::{
     backend::flatpak_backend::Package,
     ui::{
-        appearance::{self, ContainerStyle, Theme},
+        appearance::{self, ButtonStyle, ContainerStyle, Theme},
         main_window::{Config, Message},
     },
 };
@@ -85,10 +85,17 @@ impl InstalledPage {
             ])
             .width(Length::Shrink)
             .into(),
-            button(appearance::icon('\u{f1767}'))
-                .on_press(Message::Uninstall(package.name.clone()))
-                // .style(theme::Button::Text)
-                .into(),
+            column(vec![
+                button(appearance::icon('\u{f1767}'))
+                    .on_press(Message::Uninstall(package.name.clone()))
+                    .style(ButtonStyle::Icon)
+                    .into(),
+                button(appearance::icon('\u{eaa4}'))
+                    .on_press(Message::Detail)
+                    .style(ButtonStyle::Icon)
+                    .into(),
+            ])
+            .into(),
         ]))
         .width(Length::Fixed(300.0))
         .style(ContainerStyle::AppCard)
@@ -111,7 +118,7 @@ impl InstalledPage {
                         button(appearance::icon('\u{eb37}'))
                             .on_press(Message::RequestRefreshInstalledApps)
                             .padding(10.)
-                            // .style(theme::Button::Text)
+                            .style(ButtonStyle::Icon)
                             .into(),
                     ])
                     .into(),
