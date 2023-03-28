@@ -5,6 +5,8 @@ use iced::{
 };
 use iced_style::scrollable::Scroller;
 
+use super::toast;
+
 const ICONS: Font = Font::External {
     name: "Nerc Icons",
     bytes: include_bytes!("../../fonts/nerd_font.ttf"),
@@ -78,21 +80,32 @@ pub enum ContainerStyle {
     Default,
     AppCard,
     Section,
+    Toast,
 }
 
 impl container::StyleSheet for Theme {
     type Style = ContainerStyle;
     fn appearance(&self, style: &Self::Style) -> container::Appearance {
         let border_color = match style {
-            ContainerStyle::Default => self.colors().background,
+            ContainerStyle::Default => Color::TRANSPARENT,
             ContainerStyle::AppCard => self.colors().border,
             ContainerStyle::Section => self.colors().border,
+            ContainerStyle::Toast => self.colors().accent,
+        };
+        let background = match style {
+            ContainerStyle::Toast => Some(Background::Color(Color::from_rgb(0.3, 0.3, 0.3))),
+            ContainerStyle::Default => None,
+            _ => Some(Background::Color(self.colors().background)),
+        };
+        let border_width = match style {
+            ContainerStyle::Toast => 0.5,
+            _ => 2.0,
         };
         container::Appearance {
             border_radius: 20.0,
-            border_width: 2.0,
+            border_width,
             border_color,
-            background: Some(Background::Color(self.colors().background)),
+            background,
             text_color: None,
         }
     }
@@ -238,4 +251,8 @@ impl iced_aw::tabs::StyleSheet for Theme {
     ) -> iced_aw::style::tab_bar::Appearance {
         iced_aw::style::tab_bar::Appearance::default()
     }
+}
+
+impl toast::StyleSheet for Theme {
+    type Style = ();
 }

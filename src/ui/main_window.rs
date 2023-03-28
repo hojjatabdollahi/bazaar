@@ -16,7 +16,11 @@ use std::{
 
 use crate::{backend::flatpak_backend::PackageId, db::Storage};
 
-use super::{action, appearance, tabs::app_view::AppView};
+use super::{
+    action, appearance,
+    tabs::app_view::AppView,
+    toast::{self, Status, Toast},
+};
 use super::{
     appearance::Theme,
     tabs::{
@@ -57,6 +61,8 @@ struct BazaarApp {
     active_tab: usize,
     timeline: Timeline,
     current_page: Page,
+    toasts: Vec<Toast>,
+    timeout_secs: u64,
 }
 
 pub enum Page {
@@ -76,6 +82,7 @@ pub enum Message {
     DecreaseScalingFactor,
     TabSelected(usize),
     Tick(Instant),
+    Close(usize),
 }
 
 impl Application for BazaarApp {
@@ -120,6 +127,12 @@ impl Application for BazaarApp {
                 active_tab: Default::default(),
                 timeline,
                 current_page: Page::LandingPage,
+                toasts: vec![Toast {
+                    title: "Loading...".into(),
+                    body: "Updating the database. Please wait...".into(),
+                    status: Status::Primary,
+                }],
+                timeout_secs: 30, /* toast::DEFAULT_TIMEOUT */
             },
             iced::Command::none(),
         )
@@ -188,6 +201,9 @@ impl Application for BazaarApp {
             Message::Detail => {
                 self.current_page = Page::Detail;
             }
+            Message::Close(index) => {
+                self.toasts.remove(index);
+            }
             Message::ActionMessage(msg) => match msg {
                 action::Message::Ready(tx) => {
                     self.action = tx;
@@ -213,7 +229,7 @@ impl Application for BazaarApp {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        container(match self.current_page {
+        let content = container(match self.current_page {
             Page::LandingPage => column(vec![
                 self.landing_page.view().into(),
                 self.installed_page.view().into(),
@@ -223,8 +239,11 @@ impl Application for BazaarApp {
         })
         .width(Length::Fill)
         .height(Length::Fill)
-        .padding(10.0)
-        .into()
+        .padding(10.0);
+
+        toast::Manager::new(content, &self.toasts, Message::Close)
+            .timeout(self.timeout_secs)
+            .into()
     }
 
     fn scale_factor(&self) -> f64 {
