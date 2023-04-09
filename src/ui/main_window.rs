@@ -65,14 +65,17 @@ struct BazaarApp {
     timeout_secs: u64,
 }
 
+#[derive(Debug, Clone)]
 pub enum Page {
     LandingPage,
+    Installed,
     Detail,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     RequestRefreshInstalledApps,
+    RequestRefreshStaffPickApps,
     Uninstall(PackageId),
     Detail,
     ActionMessage(action::Message),
@@ -83,6 +86,8 @@ pub enum Message {
     TabSelected(usize),
     Tick(Instant),
     Close(usize),
+    ChangePage(Page),
+    StopSearch,
 }
 
 impl Application for BazaarApp {
@@ -160,12 +165,27 @@ impl Application for BazaarApp {
                 ) => Some(Message::DecreaseScalingFactor),
                 (
                     Event::Keyboard(keyboard::Event::KeyPressed {
+                        key_code: keyboard::KeyCode::F,
+                        modifiers: Modifiers::CTRL,
+                        ..
+                    }),
+                    event::Status::Ignored,
+                ) => Some(Message::SearchButton),
+                (
+                    Event::Keyboard(keyboard::Event::KeyPressed {
                         key_code: keyboard::KeyCode::Equals,
                         modifiers: Modifiers::CTRL,
                         ..
                     }),
                     event::Status::Ignored,
                 ) => Some(Message::IncreaseScalingFactor),
+                (
+                    Event::Keyboard(keyboard::Event::KeyPressed {
+                        key_code: keyboard::KeyCode::Escape,
+                        ..
+                    }),
+                    event::Status::Ignored,
+                ) => Some(Message::StopSearch),
                 _ => None,
             }),
         ])
@@ -175,6 +195,11 @@ impl Application for BazaarApp {
         match message {
             Message::RequestRefreshInstalledApps => {
                 let _ = self.action.start_send(action::Action::RefreshInstalled);
+            }
+            Message::RequestRefreshStaffPickApps => {
+                let _ = self
+                    .action
+                    .start_send(action::Action::RefreshStaffPicks(self.db.clone()));
             }
             Message::Uninstall(id) => {
                 println!("Uninstalling {}", id);
@@ -187,7 +212,10 @@ impl Application for BazaarApp {
                         .action
                         .start_send(action::Action::Search((self.db.clone(), st.clone())));
                 }
-                self.landing_page.update(LandingPageMessage::Search(st));
+                let _ = self.landing_page.update(LandingPageMessage::Search(st));
+            }
+            Message::StopSearch => {
+                let _ = self.landing_page.update(LandingPageMessage::StopSearch);
             }
             Message::IncreaseScalingFactor => {
                 self.scaling_factor += 0.1;
@@ -201,16 +229,28 @@ impl Application for BazaarApp {
             Message::Detail => {
                 self.current_page = Page::Detail;
             }
+            Message::ChangePage(page) => {
+                self.current_page = page;
+            }
             Message::Close(index) => {
                 self.toasts.remove(index);
             }
             Message::ActionMessage(msg) => match msg {
                 action::Message::Ready(tx) => {
                     self.action = tx;
+                    let _ = self
+                        .action
+                        .start_send(action::Action::RefreshStaffPicks(self.db.clone()));
+                    let _ = self.action.start_send(action::Action::RefreshInstalled);
                 }
                 action::Message::Refreshed(apps) => {
                     self.installed_page
                         .update(InstalledPageMessage::Refreshed(apps));
+                }
+                action::Message::StaffPicks(apps) => {
+                    let _ = self
+                        .landing_page
+                        .update(LandingPageMessage::StaffPicks(apps));
                 }
                 action::Message::Found(apps) => {
                     return self.landing_page.update(LandingPageMessage::Found(apps));
@@ -230,20 +270,18 @@ impl Application for BazaarApp {
 
     fn view(&self) -> iced::Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
         let content = container(match self.current_page {
-            Page::LandingPage => column(vec![
-                self.landing_page.view().into(),
-                self.installed_page.view().into(),
-            ])
-            .spacing(10.),
+            Page::LandingPage => column(vec![self.landing_page.view().into()]).spacing(10.),
+            Page::Installed => column(vec![self.installed_page.view().into()]).spacing(10.),
             Page::Detail => column(vec![self.app_view_page.view().into()]),
         })
         .width(Length::Fill)
         .height(Length::Fill)
         .padding(10.0);
 
-        toast::Manager::new(content, &self.toasts, Message::Close)
-            .timeout(self.timeout_secs)
-            .into()
+        // toast::Manager::new(content, &self.toasts, Message::Close)
+        //     .timeout(self.timeout_secs)
+        //     .into()
+        content.into()
     }
 
     fn scale_factor(&self) -> f64 {

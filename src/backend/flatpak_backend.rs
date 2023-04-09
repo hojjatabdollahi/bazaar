@@ -271,6 +271,9 @@ pub fn get_packages_remote(storage: &Storage) {
                     None
                 }
             };
+            if component.is_none() {
+                continue;
+            }
             let name = remote_ref.name().unwrap().to_string();
             let (desc, summary, pretty_name) = component.map_or((None, None, None), |c| {
                 (
@@ -281,7 +284,7 @@ pub fn get_packages_remote(storage: &Storage) {
                     c.name.get_default().map(String::to_owned),
                 )
             });
-            let icon_path = get_icon_path(&name, &remote.to_string(), &arch);
+            let icon_path = get_icon_path(&name, &remote.name().unwrap().to_string(), &arch);
             let package = Package {
                 name,
                 pretty_name,
@@ -314,6 +317,7 @@ fn get_icon_path(name: &str, remote: &str, arch: &str) -> Option<PathBuf> {
     let mut path = {
         let mut path = PathBuf::new();
         for size in [64, 128, 32, 256, 16] {
+            let mut tmp_path = PathBuf::new();
             let path_str = format!(
                 "{}/.local/share/flatpak/appstream/{}/{}/active/icons/{}x{}/{}.png",
                 env!("HOME"),
@@ -323,8 +327,9 @@ fn get_icon_path(name: &str, remote: &str, arch: &str) -> Option<PathBuf> {
                 size,
                 name
             );
-            path.push(path_str);
-            if path.exists() {
+            tmp_path.push(path_str);
+            if tmp_path.exists() {
+                path = tmp_path;
                 break;
             }
         }
@@ -341,6 +346,7 @@ fn get_icon_path(name: &str, remote: &str, arch: &str) -> Option<PathBuf> {
                 ("16", "png"),
                 ("scalable", "svg"),
             ] {
+                let mut tmp_path = PathBuf::new();
                 let path_str = format!(
                             "{}/.local/share/flatpak/app/{}/current/active/export/share/icons/hicolor/{}x{}/apps/{}.{}",
                             env!("HOME"),
@@ -350,8 +356,10 @@ fn get_icon_path(name: &str, remote: &str, arch: &str) -> Option<PathBuf> {
                             name,
                             size.1,
                         );
-                path.push(path_str);
-                if path.exists() {
+                tmp_path.push(path_str);
+                if tmp_path.exists() {
+                    path = tmp_path;
+
                     break;
                 }
             }

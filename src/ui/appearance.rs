@@ -1,5 +1,5 @@
 use iced::{
-    alignment, application,
+    alignment, application, color,
     widget::{button, container, horizontal_rule, scrollable, text, text_input, Text},
     Background, Color, Font, Vector,
 };
@@ -35,15 +35,18 @@ pub struct Colors {
     pub accent: Color,
     pub border: Color,
     pub border_low_contrast: Color,
+    pub button_color: Color,
 }
 
+// Coolors link: https://coolors.co/85b79d-636363-4c4c4c-ff934f-fbf5f3
 impl Colors {
     pub const DARK: Self = Self {
-        background: Color::from_rgb(0.2, 0.2, 0.2),
-        text: Color::from_rgb(0.9, 0.9, 0.9),
-        accent: iced::Color::from_rgb(1.0, 0.72, 0.29),
-        border: iced::Color::from_rgb(0.3, 0.3, 0.3),
+        background: Color::from_rgb(76. / 255., 76.0 / 255., 76. / 255.),
+        text: Color::from_rgb(251. / 255., 245. / 255., 243. / 255.),
+        accent: iced::Color::from_rgb(255. / 255., 147. / 79., 39. / 255.),
+        border: iced::Color::from_rgb(99. / 255., 99. / 255., 99. / 255.),
         border_low_contrast: iced::Color::from_rgb(0.1, 0.1, 0.1),
+        button_color: iced::Color::from_rgb(133. / 255., 183. / 255., 157. / 255.),
     };
     pub const LIGHT: Self = Self {
         background: Color::from_rgb(0.9, 0.9, 0.9),
@@ -51,6 +54,7 @@ impl Colors {
         accent: iced::Color::from_rgb(1.0, 0.72, 0.29),
         border: iced::Color::from_rgb(0.6, 0.6, 0.6),
         border_low_contrast: iced::Color::from_rgb(0.8, 0.8, 0.8),
+        button_color: iced::Color::from_rgb(133. / 255., 183. / 255., 157. / 255.),
     };
 }
 
@@ -139,6 +143,9 @@ pub enum ButtonStyle {
     #[default]
     Default,
     Icon,
+    Primary,
+    Secondary,
+    Tab,
 }
 
 impl button::StyleSheet for Theme {
@@ -148,14 +155,21 @@ impl button::StyleSheet for Theme {
         let border_color = match style {
             ButtonStyle::Default => self.colors().border,
             ButtonStyle::Icon => Color::TRANSPARENT,
+            ButtonStyle::Primary => Color::TRANSPARENT,
+            ButtonStyle::Secondary => Color::TRANSPARENT,
+            ButtonStyle::Tab => self.colors().button_color,
+        };
+        let border_radius = match style {
+            ButtonStyle::Tab => 30.0,
+            _ => 1.0,
         };
         button::Appearance {
             shadow_offset: Vector::default(),
             background: None,
-            border_radius: 1.0,
+            border_radius,
             border_width: 1.0,
             border_color,
-            text_color: self.colors().accent,
+            text_color: self.colors().button_color,
         }
     }
 

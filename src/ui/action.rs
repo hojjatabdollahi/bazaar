@@ -5,7 +5,10 @@ use iced::futures::channel::mpsc;
 
 use crate::{
     backend::flatpak_backend::{self, Package, PackageId},
-    db::{search::search, Storage},
+    db::{
+        search::{get_staff_picks, search},
+        Storage,
+    },
 };
 
 #[derive(Debug, Clone)]
@@ -13,12 +16,14 @@ pub enum Action {
     RefreshInstalled,
     Uninstall(PackageId),
     Search((Arc<Mutex<Storage>>, String)),
+    RefreshStaffPicks(Arc<Mutex<Storage>>),
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Ready(mpsc::Sender<Action>),
     Refreshed(Arc<Vec<Package>>),
+    StaffPicks(Arc<Vec<Package>>),
     Found(Arc<Vec<Package>>),
     Uninstalled(PackageId),
 }
@@ -46,13 +51,15 @@ where
     ) -> iced_futures::BoxStream<Self::Output> {
         use futures::stream::StreamExt;
         let (tx, rx) = mpsc::channel(1);
-        println!("stream");
-
         futures::stream::once(async { Message::Ready(tx) })
             .chain(rx.map(|action| match action {
                 Action::RefreshInstalled => {
                     let apps = flatpak_backend::get_installed_apps();
                     Message::Refreshed(Arc::new(apps))
+                }
+                Action::RefreshStaffPicks(db) => {
+                    let apps = get_staff_picks(db);
+                    Message::StaffPicks(Arc::new(apps))
                 }
                 Action::Uninstall(id) => {
                     flatpak_backend::uninstall(&id);

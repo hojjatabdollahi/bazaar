@@ -106,51 +106,58 @@ impl InstalledPage {
     }
     fn installed_apps_view(&self) -> iced::Element<Message, iced::Renderer<Theme>> {
         let mut apps = vec![];
-        if let Ok(installed_apps) = self.installed_apps.try_lock() {
-            for package in installed_apps.borrow().iter() {
-                apps.push(self.app_card(&package));
-            }
-            container(
-                column(vec![
-                    row(vec![
-                        text("Installed Apps").size(30).into(),
-                        horizontal_space(Length::Fill).into(),
-                        button(appearance::icon('\u{eb37}'))
-                            .on_press(Message::RequestRefreshInstalledApps)
-                            .padding(10.)
-                            .style(ButtonStyle::Icon)
-                            .into(),
-                    ])
+        container(
+            column(vec![
+                button(appearance::icon('\u{f030d}'))
+                    .on_press(Message::ChangePage(
+                        crate::ui::main_window::Page::LandingPage,
+                    ))
+                    .padding(10.)
+                    .style(ButtonStyle::Icon)
                     .into(),
-                    horizontal_rule(1.).into(),
-                    scrollable(
-                        container(
-                            wrap::Wrap::with_elements(apps)
-                                .spacing(10.0)
-                                .line_spacing(10.0),
+                if let Ok(installed_apps) = self.installed_apps.try_lock() {
+                    for package in installed_apps.borrow().iter() {
+                        apps.push(self.app_card(&package));
+                    }
+                    column(vec![
+                        row(vec![
+                            text("Installed Apps").size(30).into(),
+                            horizontal_space(Length::Fill).into(),
+                            button(appearance::icon('\u{eb37}'))
+                                .on_press(Message::RequestRefreshInstalledApps)
+                                .padding(10.)
+                                .style(ButtonStyle::Icon)
+                                .into(),
+                        ])
+                        .into(),
+                        horizontal_rule(1.).into(),
+                        scrollable(
+                            container(
+                                wrap::Wrap::with_elements(apps)
+                                    .spacing(10.0)
+                                    .line_spacing(10.0),
+                            )
+                            .width(Length::Fill)
+                            .center_x(),
                         )
-                        .width(Length::Fill)
-                        .center_x(),
-                    )
-                    .into(),
-                ])
-                .spacing(10.0),
-            )
-            .padding(10.0)
-            .style(ContainerStyle::Section)
-            .into()
-        } else {
-            container(
-                column(vec![
-                    text("Loading").size(30).into(),
-                    horizontal_rule(1.).into(),
-                ])
-                .spacing(10.0),
-            )
-            .padding(10.0)
-            .style(ContainerStyle::Section)
-            .into()
-        }
+                        .into(),
+                    ])
+                    .spacing(10.0)
+                    .into()
+                } else {
+                    column(vec![
+                        text("Loading").size(30).into(),
+                        horizontal_rule(1.).into(),
+                    ])
+                    .spacing(10.0)
+                    .into()
+                },
+            ])
+            .spacing(10.0),
+        )
+        .padding(10.0)
+        .style(ContainerStyle::Default)
+        .into()
     }
 }
 
