@@ -5,7 +5,7 @@ use iced::{
 };
 use iced_style::scrollable::Scroller;
 
-use super::toast;
+use super::{custom_widgets, toast};
 
 const ICONS: Font = Font::External {
     name: "Nerc Icons",
@@ -31,6 +31,7 @@ pub enum Theme {
 
 pub struct Colors {
     pub background: Color,
+    pub background_active: Color,
     pub text: Color,
     pub accent: Color,
     pub border: Color,
@@ -42,14 +43,16 @@ pub struct Colors {
 impl Colors {
     pub const DARK: Self = Self {
         background: Color::from_rgb(76. / 255., 76.0 / 255., 76. / 255.),
+        background_active: Color::from_rgb(86. / 255., 86.0 / 255., 86. / 255.),
         text: Color::from_rgb(251. / 255., 245. / 255., 243. / 255.),
-        accent: iced::Color::from_rgb(255. / 255., 147. / 79., 39. / 255.),
+        accent: iced::Color::from_rgb(0.95, 0.63, 0.38),
         border: iced::Color::from_rgb(99. / 255., 99. / 255., 99. / 255.),
         border_low_contrast: iced::Color::from_rgb(0.1, 0.1, 0.1),
         button_color: iced::Color::from_rgb(133. / 255., 183. / 255., 157. / 255.),
     };
     pub const LIGHT: Self = Self {
         background: Color::from_rgb(0.9, 0.9, 0.9),
+        background_active: Color::from_rgb(0.8, 0.8, 0.8),
         text: Color::from_rgb(0.2, 0.2, 0.2),
         accent: iced::Color::from_rgb(1.0, 0.72, 0.29),
         border: iced::Color::from_rgb(0.6, 0.6, 0.6),
@@ -115,6 +118,30 @@ impl container::StyleSheet for Theme {
     }
 }
 
+impl custom_widgets::appcard::StyleSheet for Theme {
+    type Style = ();
+
+    fn appearance(&self, _style: &Self::Style) -> custom_widgets::appcard::Appearance {
+        custom_widgets::appcard::Appearance {
+            border_radius: 20.0,
+            border_width: 2.0,
+            border_color: self.colors().border,
+            background: Some(Background::Color(self.colors().background)),
+            text_color: None,
+        }
+    }
+
+    fn hovered(&self, _sytle: &Self::Style) -> custom_widgets::appcard::Appearance {
+        custom_widgets::appcard::Appearance {
+            border_radius: 20.0,
+            border_width: 2.0,
+            border_color: self.colors().border,
+            background: Some(Background::Color(self.colors().background_active)),
+            text_color: None,
+        }
+    }
+}
+
 impl text::StyleSheet for Theme {
     type Style = ();
 
@@ -153,11 +180,11 @@ impl button::StyleSheet for Theme {
 
     fn active(&self, style: &Self::Style) -> iced_style::button::Appearance {
         let border_color = match style {
-            ButtonStyle::Default => self.colors().border,
+            ButtonStyle::Default => self.colors().accent,
             ButtonStyle::Icon => Color::TRANSPARENT,
             ButtonStyle::Primary => Color::TRANSPARENT,
             ButtonStyle::Secondary => Color::TRANSPARENT,
-            ButtonStyle::Tab => self.colors().button_color,
+            ButtonStyle::Tab => self.colors().accent,
         };
         let border_radius = match style {
             ButtonStyle::Tab => 30.0,
@@ -175,9 +202,14 @@ impl button::StyleSheet for Theme {
 
     fn hovered(&self, style: &Self::Style) -> iced_style::button::Appearance {
         let active = self.active(style);
+        let text_color = match style {
+            ButtonStyle::Icon => self.colors().accent,
+            _ => self.colors().button_color,
+        };
 
         iced_style::button::Appearance {
             background: None,
+            text_color,
             ..active
         }
     }

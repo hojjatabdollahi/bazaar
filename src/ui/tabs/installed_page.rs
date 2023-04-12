@@ -18,6 +18,7 @@ use crate::{
     backend::flatpak_backend::Package,
     ui::{
         appearance::{self, ButtonStyle, ContainerStyle, Theme},
+        custom_widgets::appcard::AppCard,
         main_window::{Config, Message},
     },
 };
@@ -69,36 +70,32 @@ impl InstalledPage {
         .center_x()
     }
     fn app_card(&self, package: &Package) -> iced::Element<Message, iced::Renderer<Theme>> {
-        container(row(vec![
-            self.app_icon(64, &package.icon_path).into(),
-            column(vec![
-                text(&package.pretty_name.clone().unwrap_or("".to_string()))
-                    .width(Length::Fixed(250.))
-                    // .style(theme::Text::Color(self.style_sheet().app_card_text_color))
-                    .size(28)
-                    .into(),
-                text(&package.summary.clone().unwrap_or(String::from("")))
-                    .width(Length::Fixed(250.))
-                    // .style(theme::Text::Color(self.style_sheet().app_card_text_color))
-                    .size(18)
-                    .into(),
-            ])
-            .width(Length::Shrink)
-            .into(),
-            column(vec![
+        AppCard::new(
+            container(row(vec![
+                self.app_icon(64, &package.icon_path).into(),
+                column(vec![
+                    text(&package.pretty_name.clone().unwrap_or("".to_string()))
+                        .width(Length::Fixed(250.))
+                        // .style(theme::Text::Color(self.style_sheet().app_card_text_color))
+                        .size(28)
+                        .into(),
+                    text(&package.summary.clone().unwrap_or(String::from("")))
+                        .width(Length::Fixed(250.))
+                        // .style(theme::Text::Color(self.style_sheet().app_card_text_color))
+                        .size(18)
+                        .into(),
+                ])
+                .width(Length::Shrink)
+                .into(),
                 button(appearance::icon('\u{f1767}'))
                     .on_press(Message::Uninstall(package.name.clone()))
                     .style(ButtonStyle::Icon)
                     .into(),
-                button(appearance::icon('\u{eaa4}'))
-                    .on_press(Message::Detail)
-                    .style(ButtonStyle::Icon)
-                    .into(),
-            ])
-            .into(),
-        ]))
+            ])),
+            package.name.clone(),
+            Message::Detail,
+        )
         .width(Length::Fixed(300.0))
-        .style(ContainerStyle::AppCard)
         .padding(10.0)
         .width(Length::Shrink)
         .height(Length::Shrink)

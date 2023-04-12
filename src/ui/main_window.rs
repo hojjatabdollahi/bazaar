@@ -76,8 +76,9 @@ pub enum Page {
 pub enum Message {
     RequestRefreshInstalledApps,
     RequestRefreshStaffPickApps,
+    Install(PackageId),
     Uninstall(PackageId),
-    Detail,
+    Detail(PackageId),
     ActionMessage(action::Message),
     Search(String),
     SearchButton,
@@ -201,9 +202,15 @@ impl Application for BazaarApp {
                     .action
                     .start_send(action::Action::RefreshStaffPicks(self.db.clone()));
             }
+            Message::Install(id) => {
+                println!("Installing {}", id);
+                // TODO
+            }
             Message::Uninstall(id) => {
                 println!("Uninstalling {}", id);
-                let _ = self.action.start_send(action::Action::Uninstall(id));
+                let _ = self
+                    .action
+                    .start_send(action::Action::Uninstall(id.clone()));
             }
             Message::Search(st) => {
                 if st.len() >= 3 {
@@ -226,7 +233,8 @@ impl Application for BazaarApp {
             Message::TabSelected(new_tab) => {
                 self.active_tab = new_tab;
             }
-            Message::Detail => {
+            Message::Detail(id) => {
+                println!("Show detail for the app: {id:?}");
                 self.current_page = Page::Detail;
             }
             Message::ChangePage(page) => {

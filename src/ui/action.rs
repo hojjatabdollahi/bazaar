@@ -63,7 +63,7 @@ where
                 }
                 Action::Uninstall(id) => {
                     flatpak_backend::uninstall(&id);
-                    Message::Uninstalled(id)
+                    Message::Uninstalled(id.clone())
                 }
                 Action::Search((db, st)) => {
                     let apps = search(db.clone(), &st);

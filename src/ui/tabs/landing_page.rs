@@ -23,6 +23,7 @@ use crate::{
     db::search,
     ui::{
         appearance::{self, ButtonStyle, ContainerStyle, Theme},
+        custom_widgets::appcard::AppCard,
         main_window::{Config, Message},
     },
 };
@@ -148,33 +149,44 @@ impl LandingPage {
         &self,
         package: &Package,
         show_buttons: bool,
+        installed: bool,
     ) -> iced::Element<Message, iced::Renderer<Theme>> {
-        container(row(vec![
-            self.app_icon(64, &package.icon_path).into(),
-            column(vec![
-                text(&package.pretty_name.clone().unwrap_or("".to_string()))
-                    .width(Length::Fixed(250.))
-                    // .style(theme::Text::Color(self.style_sheet().app_card_text_color))
-                    .size(28)
-                    .into(),
-                text(&package.summary.clone().unwrap_or(String::from("")))
-                    .width(Length::Fixed(250.))
-                    // .style(theme::Text::Color(self.style_sheet().app_card_text_color))
-                    .size(18)
-                    .into(),
-            ])
-            .width(Length::Shrink)
-            .into(),
-            if show_buttons {
-                button(appearance::icon('\u{f1767}'))
-                    .on_press(Message::Uninstall(package.name.clone()))
-                    .style(ButtonStyle::Icon)
-                    .into()
-            } else {
-                Row::new().into()
-            },
-        ]))
-        .style(ContainerStyle::AppCard)
+        AppCard::new(
+            container(row(vec![
+                self.app_icon(64, &package.icon_path).into(),
+                column(vec![
+                    text(&package.pretty_name.clone().unwrap_or("".to_string()))
+                        .width(Length::Fixed(250.))
+                        // .style(theme::Text::Color(self.style_sheet().app_card_text_color))
+                        .size(28)
+                        .into(),
+                    text(&package.summary.clone().unwrap_or(String::from("")))
+                        .width(Length::Fixed(250.))
+                        // .style(theme::Text::Color(self.style_sheet().app_card_text_color))
+                        .size(18)
+                        .into(),
+                ])
+                .width(Length::Shrink)
+                .into(),
+                if show_buttons {
+                    if installed {
+                        button(appearance::icon('\u{f1767}'))
+                            .on_press(Message::Uninstall(package.name.clone()))
+                            .style(ButtonStyle::Icon)
+                            .into()
+                    } else {
+                        button(appearance::icon('\u{f498}'))
+                            .on_press(Message::Uninstall(package.name.clone()))
+                            .style(ButtonStyle::Icon)
+                            .into()
+                    }
+                } else {
+                    Row::new().into()
+                },
+            ])),
+            package.name.clone(),
+            Message::Detail,
+        )
         .width(Length::Fixed(300.0))
         .padding(10.0)
         .width(Length::Shrink)
@@ -189,7 +201,7 @@ impl LandingPage {
             if let Ok(staff_picks) = self.staff_pick_apps.try_lock() {
                 let mut apps = vec![];
                 for package in staff_picks.borrow().iter() {
-                    apps.push(self.app_card(&package, false));
+                    apps.push(self.app_card(&package, false, false));
                 }
 
                 column(vec![scrollable(
@@ -220,7 +232,8 @@ impl LandingPage {
             column(vec![
                 if let Ok(found_apps) = self.found_apps.try_lock() {
                     for package in found_apps.borrow().iter() {
-                        apps.push(self.app_card(&package, true));
+                        apps.push(self.app_card(&package, true, false)); // TODO: check if it is
+                                                                         // installed
                     }
 
                     column(vec![

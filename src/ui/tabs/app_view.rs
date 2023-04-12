@@ -17,7 +17,7 @@ use iced_aw::{graphics::icons::Icon, wrap, TabLabel};
 use crate::{
     backend::flatpak_backend::Package,
     ui::{
-        appearance::{self, ContainerStyle, Theme},
+        appearance::{self, ButtonStyle, ContainerStyle, Theme},
         main_window::{Config, Message},
     },
 };
@@ -99,6 +99,14 @@ impl AppView {
 
         container(
             Column::new()
+                .push(
+                    button(appearance::icon('\u{f030d}'))
+                        .on_press(Message::ChangePage(
+                            crate::ui::main_window::Page::LandingPage,
+                        ))
+                        .padding(10.)
+                        .style(ButtonStyle::Icon),
+                )
                 .push(horizontal_space(Length::Fill))
                 .push(app_dashboard)
                 .push(horizontal_space(Length::Fill)),
