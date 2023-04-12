@@ -14,6 +14,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum Action {
     RefreshInstalled,
+    RefreshUpdates,
     Uninstall(PackageId),
     Search((Arc<Mutex<Storage>>, String)),
     RefreshStaffPicks(Arc<Mutex<Storage>>),
@@ -22,7 +23,8 @@ pub enum Action {
 #[derive(Debug, Clone)]
 pub enum Message {
     Ready(mpsc::Sender<Action>),
-    Refreshed(Arc<Vec<Package>>),
+    Installed(Arc<Vec<Package>>),
+    Updates(Arc<Vec<Package>>),
     StaffPicks(Arc<Vec<Package>>),
     Found(Arc<Vec<Package>>),
     Uninstalled(PackageId),
@@ -50,12 +52,17 @@ where
         _input: iced_futures::BoxStream<I>,
     ) -> iced_futures::BoxStream<Self::Output> {
         use futures::stream::StreamExt;
-        let (tx, rx) = mpsc::channel(1);
+        let (tx, rx) = mpsc::channel(10);
         futures::stream::once(async { Message::Ready(tx) })
             .chain(rx.map(|action| match action {
                 Action::RefreshInstalled => {
                     let apps = flatpak_backend::get_installed_apps();
-                    Message::Refreshed(Arc::new(apps))
+                    Message::Installed(Arc::new(apps))
+                }
+                Action::RefreshUpdates => {
+                    let apps = flatpak_backend::get_updatable_apps();
+                    println!("Found {} updates", apps.len());
+                    Message::Updates(Arc::new(apps))
                 }
                 Action::RefreshStaffPicks(db) => {
                     let apps = get_staff_picks(db);

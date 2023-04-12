@@ -159,6 +159,30 @@ pub fn get_installed_apps() -> Vec<Package> {
     result
 }
 
+pub fn get_updatable_apps() -> Vec<Package> {
+    println!("Getting updatable packages");
+    let mut result = vec![];
+    // let sys = Installation::new_system(libflatpak::gio::Cancellable::NONE).unwrap();
+    // // TODO: No installed sys packages on my system, will do this later
+    // let installed_sys = sys
+    //     .list_installed_refs(libflatpak::gio::Cancellable::NONE)
+    //     .unwrap();
+    // for pkg in installed_sys {
+    //     println!("sys: {:?}", pkg);
+    // }
+    // User packages
+    let user = Installation::new_user(libflatpak::gio::Cancellable::NONE).unwrap();
+    let updates_user = user
+        .list_installed_refs_for_update(libflatpak::gio::Cancellable::NONE)
+        .unwrap();
+    for pkg in updates_user {
+        if pkg.kind() == RefKind::App {
+            result.push(Package::from(pkg));
+        }
+    }
+    result
+}
+
 pub fn uninstall(name: &str) {
     let user = Installation::new_user(libflatpak::gio::Cancellable::NONE).unwrap();
     let installed_user = user

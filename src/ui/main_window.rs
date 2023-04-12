@@ -75,6 +75,7 @@ pub enum Page {
 #[derive(Debug, Clone)]
 pub enum Message {
     RequestRefreshInstalledApps,
+    RequestRefreshUpdates,
     RequestRefreshStaffPickApps,
     Install(PackageId),
     Uninstall(PackageId),
@@ -197,6 +198,9 @@ impl Application for BazaarApp {
             Message::RequestRefreshInstalledApps => {
                 let _ = self.action.start_send(action::Action::RefreshInstalled);
             }
+            Message::RequestRefreshUpdates => {
+                let _ = self.action.start_send(action::Action::RefreshUpdates);
+            }
             Message::RequestRefreshStaffPickApps => {
                 let _ = self
                     .action
@@ -250,10 +254,15 @@ impl Application for BazaarApp {
                         .action
                         .start_send(action::Action::RefreshStaffPicks(self.db.clone()));
                     let _ = self.action.start_send(action::Action::RefreshInstalled);
+                    let _ = self.action.start_send(action::Action::RefreshUpdates);
                 }
-                action::Message::Refreshed(apps) => {
+                action::Message::Installed(apps) => {
                     self.installed_page
-                        .update(InstalledPageMessage::Refreshed(apps));
+                        .update(InstalledPageMessage::Installed(apps));
+                }
+                action::Message::Updates(apps) => {
+                    self.installed_page
+                        .update(InstalledPageMessage::Updates(apps));
                 }
                 action::Message::StaffPicks(apps) => {
                     let _ = self

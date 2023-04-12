@@ -29,10 +29,12 @@ pub struct InstalledPage {
     config: Config,
 
     pub installed_apps: Arc<Mutex<RefCell<Vec<Package>>>>,
+    pub Updatable_apps: Arc<Mutex<RefCell<Vec<Package>>>>,
 }
 
 pub enum InstalledPageMessage {
-    Refreshed(Arc<Vec<Package>>),
+    Installed(Arc<Vec<Package>>),
+    Updates(Arc<Vec<Package>>),
 }
 
 impl InstalledPage {
@@ -40,14 +42,19 @@ impl InstalledPage {
         Self {
             config,
             installed_apps: Default::default(),
+            Updatable_apps: Default::default(),
         }
     }
 
     pub fn update(&mut self, message: InstalledPageMessage) {
         match message {
-            InstalledPageMessage::Refreshed(apps) => {
+            InstalledPageMessage::Installed(apps) => {
                 println!("Refreshed installed apps");
                 *self.installed_apps.lock().unwrap().borrow_mut() = Arc::try_unwrap(apps).unwrap();
+            }
+            InstalledPageMessage::Updates(apps) => {
+                println!("Refreshed updates");
+                *self.Updatable_apps.lock().unwrap().borrow_mut() = Arc::try_unwrap(apps).unwrap();
             }
         }
     }
@@ -102,7 +109,6 @@ impl InstalledPage {
         .into()
     }
     fn installed_apps_view(&self) -> iced::Element<Message, iced::Renderer<Theme>> {
-        let mut apps = vec![];
         container(
             column(vec![
                 button(appearance::icon('\u{f030d}'))
@@ -112,7 +118,46 @@ impl InstalledPage {
                     .padding(10.)
                     .style(ButtonStyle::Icon)
                     .into(),
+                if let Ok(udpatable_apps) = self.Updatable_apps.try_lock() {
+                    let mut apps = vec![];
+                    for package in udpatable_apps.borrow().iter() {
+                        apps.push(self.app_card(&package));
+                    }
+                    column(vec![
+                        row(vec![
+                            text("Updates").size(30).into(),
+                            horizontal_space(Length::Fill).into(),
+                            button(appearance::icon('\u{eb37}'))
+                                .on_press(Message::RequestRefreshInstalledApps)
+                                .padding(10.)
+                                .style(ButtonStyle::Icon)
+                                .into(),
+                        ])
+                        .into(),
+                        horizontal_rule(1.).into(),
+                        scrollable(
+                            container(
+                                wrap::Wrap::with_elements(apps)
+                                    .spacing(10.0)
+                                    .line_spacing(10.0),
+                            )
+                            .width(Length::Fill)
+                            .center_x(),
+                        )
+                        .into(),
+                    ])
+                    .spacing(10.0)
+                    .into()
+                } else {
+                    column(vec![
+                        text("Loading").size(30).into(),
+                        horizontal_rule(1.).into(),
+                    ])
+                    .spacing(10.0)
+                    .into()
+                },
                 if let Ok(installed_apps) = self.installed_apps.try_lock() {
+                    let mut apps = vec![];
                     for package in installed_apps.borrow().iter() {
                         apps.push(self.app_card(&package));
                     }
