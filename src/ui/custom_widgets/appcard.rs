@@ -364,8 +364,13 @@ pub fn draw_background<Renderer>(
         renderer.fill_quad(
             renderer::Quad {
                 bounds,
-                border_radius: [appearance.border_radius, 0.0, appearance.border_radius, 0.0]
-                    .into(),
+                border_radius: [
+                    appearance.border_radius,
+                    0.0,
+                    appearance.border_radius,
+                    appearance.border_radius,
+                ]
+                .into(),
                 border_width: appearance.border_width,
                 border_color: appearance.border_color,
             },

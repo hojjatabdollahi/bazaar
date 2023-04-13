@@ -280,9 +280,9 @@ impl LandingPage {
                             horizontal_space(Length::Fill).into(),
                             horizontal_space(Length::Fixed(10.0)).into(),
                             button(
-                                row![appearance::icon('\u{f06b0}'), text("Update"),].spacing(10.),
+                                row![appearance::icon('\u{f06b0}'), text("Updates"),].spacing(10.),
                             )
-                            .style(ButtonStyle::Tab)
+                            .style(ButtonStyle::Primary)
                             .padding([10, 20])
                             .on_press(Message::ChangePage(crate::ui::main_window::Page::Installed))
                             .into(),

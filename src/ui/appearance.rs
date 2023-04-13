@@ -31,33 +31,49 @@ pub enum Theme {
 
 pub struct Colors {
     pub background: Color,
-    pub background_active: Color,
-    pub text: Color,
-    pub accent: Color,
+    pub surface: Color,
+    pub on_surface: Color,
+    pub surface_1up: Color,
+    pub primary: Color,
+    pub on_primary: Color,
+    pub secondary: Color,
     pub border: Color,
     pub border_low_contrast: Color,
-    pub button_color: Color,
+}
+
+macro_rules! hex {
+    ($code:literal) => {
+        Color::from_rgb(
+            (($code & 0x00FF0000) >> 16) as f32 / 255.0,
+            (($code & 0x0000FF00) >> 8) as f32 / 255.0,
+            ($code & 0x000000FF) as f32 / 255.0,
+        )
+    };
 }
 
 // Coolors link: https://coolors.co/85b79d-636363-4c4c4c-ff934f-fbf5f3
 impl Colors {
     pub const DARK: Self = Self {
-        background: Color::from_rgb(76. / 255., 76.0 / 255., 76. / 255.),
-        background_active: Color::from_rgb(86. / 255., 86.0 / 255., 86. / 255.),
-        text: Color::from_rgb(251. / 255., 245. / 255., 243. / 255.),
-        accent: iced::Color::from_rgb(0.95, 0.63, 0.38),
-        border: iced::Color::from_rgb(99. / 255., 99. / 255., 99. / 255.),
+        background: hex!(0x1E1E1E),
+        surface: iced::Color::from_rgba(255.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0, 0.01), //hex!(0x6A040F),
+        surface_1up: iced::Color::from_rgba(255.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0, 0.08), //hex!(0x6A040F),
+        on_surface: hex!(0xAEAEAE),
+        primary: hex!(0x94EBEB),
+        on_primary: hex!(0x000000),
+        border: iced::Color::from_rgba(201.0 / 255.0, 201.0 / 255.0, 201.0 / 255.0, 0.2), //0.97, 0.8, 0.66),
         border_low_contrast: iced::Color::from_rgb(0.1, 0.1, 0.1),
-        button_color: iced::Color::from_rgb(133. / 255., 183. / 255., 157. / 255.),
+        secondary: iced::Color::from_rgb(133. / 255., 183. / 255., 157. / 255.),
     };
     pub const LIGHT: Self = Self {
         background: Color::from_rgb(0.9, 0.9, 0.9),
-        background_active: Color::from_rgb(0.8, 0.8, 0.8),
-        text: Color::from_rgb(0.2, 0.2, 0.2),
-        accent: iced::Color::from_rgb(1.0, 0.72, 0.29),
+        surface: Color::from_rgb(0.8, 0.8, 0.8),
+        on_surface: Color::from_rgb(0.2, 0.2, 0.2),
+        surface_1up: Color::from_rgb(0.8, 0.8, 0.8),
+        primary: iced::Color::from_rgb(1.0, 0.72, 0.29),
+        on_primary: Color::from_rgb(0.9, 0.9, 0.9),
         border: iced::Color::from_rgb(0.6, 0.6, 0.6),
         border_low_contrast: iced::Color::from_rgb(0.8, 0.8, 0.8),
-        button_color: iced::Color::from_rgb(133. / 255., 183. / 255., 157. / 255.),
+        secondary: iced::Color::from_rgb(133. / 255., 183. / 255., 157. / 255.),
     };
 }
 
@@ -76,7 +92,7 @@ impl application::StyleSheet for Theme {
     fn appearance(&self, _style: &Self::Style) -> application::Appearance {
         application::Appearance {
             background_color: self.colors().background,
-            text_color: self.colors().text,
+            text_color: self.colors().on_surface,
         }
     }
 }
@@ -97,7 +113,7 @@ impl container::StyleSheet for Theme {
             ContainerStyle::Default => Color::TRANSPARENT,
             ContainerStyle::AppCard => self.colors().border,
             ContainerStyle::Section => self.colors().border,
-            ContainerStyle::Toast => self.colors().accent,
+            ContainerStyle::Toast => self.colors().primary,
         };
         let background = match style {
             ContainerStyle::Toast => Some(Background::Color(Color::from_rgb(0.3, 0.3, 0.3))),
@@ -124,9 +140,9 @@ impl custom_widgets::appcard::StyleSheet for Theme {
     fn appearance(&self, _style: &Self::Style) -> custom_widgets::appcard::Appearance {
         custom_widgets::appcard::Appearance {
             border_radius: 20.0,
-            border_width: 2.0,
+            border_width: 1.0,
             border_color: self.colors().border,
-            background: Some(Background::Color(self.colors().background)),
+            background: Some(Background::Color(self.colors().surface)),
             text_color: None,
         }
     }
@@ -134,9 +150,9 @@ impl custom_widgets::appcard::StyleSheet for Theme {
     fn hovered(&self, _sytle: &Self::Style) -> custom_widgets::appcard::Appearance {
         custom_widgets::appcard::Appearance {
             border_radius: 20.0,
-            border_width: 2.0,
+            border_width: 1.0,
             border_color: self.colors().border,
-            background: Some(Background::Color(self.colors().background_active)),
+            background: Some(Background::Color(self.colors().surface_1up)),
             text_color: None,
         }
     }
@@ -146,9 +162,7 @@ impl text::StyleSheet for Theme {
     type Style = ();
 
     fn appearance(&self, style: Self::Style) -> text::Appearance {
-        text::Appearance {
-            color: Some(self.colors().text),
-        }
+        text::Appearance { color: None }
     }
 }
 
@@ -179,36 +193,40 @@ impl button::StyleSheet for Theme {
     type Style = ButtonStyle;
 
     fn active(&self, style: &Self::Style) -> iced_style::button::Appearance {
-        let border_color = match style {
-            ButtonStyle::Default => self.colors().accent,
-            ButtonStyle::Icon => Color::TRANSPARENT,
-            ButtonStyle::Primary => Color::TRANSPARENT,
-            ButtonStyle::Secondary => Color::TRANSPARENT,
-            ButtonStyle::Tab => self.colors().accent,
+        let background = match style {
+            ButtonStyle::Default => None,
+            ButtonStyle::Icon => None,
+            ButtonStyle::Primary => Some(iced::Background::Color(self.colors().primary)),
+            ButtonStyle::Secondary => Some(iced::Background::Color(self.colors().secondary)),
+            ButtonStyle::Tab => None,
+        };
+        let text_color = match style {
+            ButtonStyle::Primary => self.colors().on_primary,
+            ButtonStyle::Icon => self.colors().primary,
+            _ => self.colors().on_surface,
         };
         let border_radius = match style {
-            ButtonStyle::Tab => 30.0,
+            ButtonStyle::Primary => 30.0,
             _ => 1.0,
         };
         button::Appearance {
             shadow_offset: Vector::default(),
-            background: None,
+            background,
             border_radius,
             border_width: 1.0,
-            border_color,
-            text_color: self.colors().button_color,
+            border_color: Color::TRANSPARENT,
+            text_color,
         }
     }
 
     fn hovered(&self, style: &Self::Style) -> iced_style::button::Appearance {
         let active = self.active(style);
         let text_color = match style {
-            ButtonStyle::Icon => self.colors().accent,
-            _ => self.colors().button_color,
+            ButtonStyle::Icon => self.colors().primary,
+            _ => active.text_color,
         };
 
         iced_style::button::Appearance {
-            background: None,
             text_color,
             ..active
         }
@@ -229,7 +247,7 @@ impl scrollable::StyleSheet for Theme {
             border_width: 1.0,
             border_color: self.colors().border,
             scroller: Scroller {
-                color: self.colors().accent,
+                color: self.colors().primary,
                 border_radius: 1.0,
                 border_width: 1.0,
                 border_color: self.colors().border,
@@ -256,7 +274,7 @@ impl text_input::StyleSheet for Theme {
 
     fn focused(&self, style: &Self::Style) -> text_input::Appearance {
         text_input::Appearance {
-            border_color: self.colors().accent,
+            border_color: self.colors().primary,
             ..self.active(style)
         }
     }
@@ -285,8 +303,8 @@ impl iced_aw::tabs::StyleSheet for Theme {
             tab_label_background: Background::Color(self.colors().background),
             tab_label_border_color: self.colors().border,
             tab_label_border_width: 1.0,
-            icon_color: self.colors().accent,
-            text_color: self.colors().accent,
+            icon_color: self.colors().primary,
+            text_color: self.colors().primary,
         }
     }
 
