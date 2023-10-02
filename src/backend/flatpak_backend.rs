@@ -1,4 +1,5 @@
 use appstream::{enums::Bundle, AppId, Collection, Component};
+use iced::futures::channel::mpsc;
 use libflatpak::{
     gio::{traits::FileExt, Cancellable},
     glib::GString,
@@ -9,7 +10,7 @@ use libflatpak::{
 
 use std::path::PathBuf;
 
-use crate::db::Storage;
+use crate::db::{self, Storage};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub enum PackageKind {
@@ -227,7 +228,7 @@ pub fn get_remote_ref_by_name(name: &str) -> Option<RemoteRef> {
     None
 }
 
-pub fn get_packages_remote(storage: &Storage) {
+pub fn get_packages_remote(storage: &Storage, mut tx: mpsc::Sender<db::Message>) {
     println!("Refreshing");
 
     let sys = Installation::new_system(libflatpak::gio::Cancellable::NONE).unwrap();
@@ -246,9 +247,7 @@ pub fn get_packages_remote(storage: &Storage) {
         let packages = user
             .list_remote_refs_sync(&remote_name, Cancellable::NONE)
             .unwrap();
-        for pkg in &packages {
-            // println!("Ref: {}", pkg.name().unwrap().to_string());
-        }
+        let total_package = packages.len();
         let mut appstream_file = PathBuf::new();
         let appstream_dir = remote.appstream_dir(Some(std::env::consts::ARCH)).unwrap();
         appstream_file.push(appstream_dir.path().unwrap());
@@ -272,8 +271,13 @@ pub fn get_packages_remote(storage: &Storage) {
                 None
             }
         };
+        let mut package_counter = 0;
         let mut db_packages = Vec::new();
         for remote_ref in &packages {
+            package_counter += 1;
+            let percentage = ((package_counter * 100) as f32 / total_package as f32) as u32;
+            let _ = tx.try_send(db::Message::Progress(percentage));
+            println!("loaded {percentage:?}%");
             let ref_name = remote_ref.format_ref().unwrap().to_string();
             // println!("Found package {}", ref_name);
             let arch = remote_ref.arch().unwrap().to_string();

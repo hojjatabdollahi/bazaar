@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use iced::futures;
 use iced::futures::channel::mpsc;
+use iced_futures::core::Hasher;
 
 use crate::{
     backend::flatpak_backend::{self, Package, PackageId},
@@ -36,20 +37,17 @@ pub fn subscribe() -> iced::Subscription<Message> {
 
 pub struct BackendSubscription;
 
-impl<H, I> iced_native::subscription::Recipe<H, I> for BackendSubscription
-where
-    H: std::hash::Hasher,
-{
+impl iced_futures::subscription::Recipe for BackendSubscription {
     type Output = Message;
 
-    fn hash(&self, state: &mut H) {
+    fn hash(&self, state: &mut Hasher) {
         use std::hash::Hash;
         std::any::TypeId::of::<Self>().hash(state);
     }
 
     fn stream(
         self: Box<Self>,
-        _input: iced_futures::BoxStream<I>,
+        _input: iced_futures::subscription::EventStream,
     ) -> iced_futures::BoxStream<Self::Output> {
         use futures::stream::StreamExt;
         let (tx, rx) = mpsc::channel(10);

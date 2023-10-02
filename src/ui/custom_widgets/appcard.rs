@@ -1,13 +1,12 @@
+use iced::advanced::renderer;
+use iced::advanced::widget::{Operation, Tree, Widget};
+use iced::advanced::Layout;
 use iced::{
     alignment, event, mouse, overlay, touch, Alignment, Background, Color, Element, Event, Length,
     Padding, Point, Rectangle,
 };
-
-use iced_native::{
-    layout, renderer,
-    widget::{self, Operation, Tree},
-    Clipboard, Layout, Pixels, Shell, Widget,
-};
+use iced_core::layout::{self, Limits};
+use iced_core::{widget, Clipboard};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Appearance {
@@ -46,7 +45,7 @@ pub trait StyleSheet {
 }
 pub struct AppCard<'a, Message, Renderer>
 where
-    Renderer: iced_native::Renderer,
+    Renderer: renderer::Renderer,
     Renderer::Theme: StyleSheet,
 {
     id: Option<Id>,
@@ -64,7 +63,7 @@ where
 
 impl<'a, Message, Renderer> AppCard<'a, Message, Renderer>
 where
-    Renderer: iced_native::Renderer,
+    Renderer: renderer::Renderer,
     Renderer::Theme: StyleSheet,
 {
     /// Creates an empty [`Container`].
@@ -113,17 +112,17 @@ where
         self
     }
 
-    /// Sets the maximum width of the [`Container`].
-    pub fn max_width(mut self, max_width: impl Into<Pixels>) -> Self {
-        self.max_width = max_width.into().0;
-        self
-    }
+    // /// Sets the maximum width of the [`Container`].
+    // pub fn max_width(mut self, max_width: impl Into<Pixels>) -> Self {
+    //     self.max_width = max_width.into().0;
+    //     self
+    // }
 
-    /// Sets the maximum height of the [`Container`].
-    pub fn max_height(mut self, max_height: impl Into<Pixels>) -> Self {
-        self.max_height = max_height.into().0;
-        self
-    }
+    // /// Sets the maximum height of the [`Container`].
+    // pub fn max_height(mut self, max_height: impl Into<Pixels>) -> Self {
+    //     self.max_height = max_height.into().0;
+    //     self
+    // }
 
     /// Sets the content alignment for the horizontal axis of the [`Container`].
     pub fn align_x(mut self, alignment: alignment::Horizontal) -> Self {
@@ -159,7 +158,7 @@ where
 impl<'a, Message, Renderer> Widget<Message, Renderer> for AppCard<'a, Message, Renderer>
 where
     Message: Clone,
-    Renderer: iced_native::Renderer,
+    Renderer: renderer::Renderer,
     Renderer::Theme: StyleSheet,
 {
     fn children(&self) -> Vec<Tree> {
@@ -178,7 +177,106 @@ where
         self.height
     }
 
-    fn layout(&self, renderer: &Renderer, limits: &layout::Limits) -> layout::Node {
+    // fn layout(&self, renderer: &Renderer, limits: &layout::Limits) -> layout::Node {
+    //     layout(
+    //         renderer,
+    //         limits,
+    //         self.width,
+    //         self.height,
+    //         self.max_width,
+    //         self.max_height,
+    //         self.padding,
+    //         self.horizontal_alignment,
+    //         self.vertical_alignment,
+    //         |renderer, limits| self.content.as_widget().layout(renderer, limits),
+    //     )
+    // }
+
+    // fn operate(
+    //     &self,
+    //     tree: &mut Tree,
+    //     layout: Layout<'_>,
+    //     renderer: &Renderer,
+    //     operation: &mut dyn Operation<Message>,
+    // ) {
+    //     operation.container(self.id.as_ref().map(|id| &id.0), &mut |operation| {
+    //         self.content.as_widget().operate(
+    //             &mut tree.children[0],
+    //             layout.children().next().unwrap(),
+    //             renderer,
+    //             operation,
+    //         );
+    //     });
+    // }
+
+    // fn on_event( &mut self,
+    //     tree: &mut Tree,
+    //     event: Event,
+    //     layout: Layout<'_>,
+    //     cursor_position: Point,
+    //     renderer: &Renderer,
+    //     clipboard: &mut dyn Clipboard,
+    //     shell: &mut Shell<'_, Message>,
+    // ) -> event::Status {
+    //     if self.content.as_widget_mut().on_event(
+    //         &mut tree.children[0],
+    //         event.clone(),
+    //         layout.children().next().unwrap(),
+    //         cursor_position,
+    //         renderer,
+    //         clipboard,
+    //         shell,
+    //     ) == event::Status::Ignored
+    //     {
+    //         match event {
+    //             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
+    //             | Event::Touch(touch::Event::FingerPressed { .. }) => {
+    //                 if layout.bounds().contains(cursor_position) {
+    //                     shell.publish(self.on_click.clone());
+    //                     return event::Status::Captured;
+    //                 }
+    //             }
+    //             _ => {}
+    //         }
+    //     }
+    //     event::Status::Ignored
+    // }
+
+    // fn mouse_interaction(
+    //     &self,
+    //     tree: &Tree,
+    //     layout: Layout<'_>,
+    //     cursor_position: Point,
+    //     viewport: &Rectangle,
+    //     renderer: &Renderer,
+    // ) -> mouse::Interaction {
+    //     self.content.as_widget().mouse_interaction(
+    //         &tree.children[0],
+    //         layout.children().next().unwrap(),
+    //         cursor_position,
+    //         viewport,
+    //         renderer,
+    //     )
+    // }
+
+    fn overlay<'b>(
+        &'b mut self,
+        tree: &'b mut Tree,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+    ) -> Option<overlay::Element<'b, Message, Renderer>> {
+        self.content.as_widget_mut().overlay(
+            &mut tree.children[0],
+            layout.children().next().unwrap(),
+            renderer,
+        )
+    }
+
+    fn layout(
+        &self,
+        renderer: &Renderer,
+        limits: &iced_core::layout::Limits,
+    ) -> iced_core::layout::Node {
         layout(
             renderer,
             limits,
@@ -193,124 +291,43 @@ where
         )
     }
 
-    fn operate(
-        &self,
-        tree: &mut Tree,
-        layout: Layout<'_>,
-        renderer: &Renderer,
-        operation: &mut dyn Operation<Message>,
-    ) {
-        operation.container(self.id.as_ref().map(|id| &id.0), &mut |operation| {
-            self.content.as_widget().operate(
-                &mut tree.children[0],
-                layout.children().next().unwrap(),
-                renderer,
-                operation,
-            );
-        });
-    }
-
-    fn on_event(
-        &mut self,
-        tree: &mut Tree,
-        event: Event,
-        layout: Layout<'_>,
-        cursor_position: Point,
-        renderer: &Renderer,
-        clipboard: &mut dyn Clipboard,
-        shell: &mut Shell<'_, Message>,
-    ) -> event::Status {
-        if self.content.as_widget_mut().on_event(
-            &mut tree.children[0],
-            event.clone(),
-            layout.children().next().unwrap(),
-            cursor_position,
-            renderer,
-            clipboard,
-            shell,
-        ) == event::Status::Ignored
-        {
-            match event {
-                Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
-                | Event::Touch(touch::Event::FingerPressed { .. }) => {
-                    if layout.bounds().contains(cursor_position) {
-                        shell.publish(self.on_click.clone());
-                        return event::Status::Captured;
-                    }
-                }
-                _ => {}
-            }
-        }
-        event::Status::Ignored
-    }
-
-    fn mouse_interaction(
-        &self,
-        tree: &Tree,
-        layout: Layout<'_>,
-        cursor_position: Point,
-        viewport: &Rectangle,
-        renderer: &Renderer,
-    ) -> mouse::Interaction {
-        self.content.as_widget().mouse_interaction(
-            &tree.children[0],
-            layout.children().next().unwrap(),
-            cursor_position,
-            viewport,
-            renderer,
-        )
-    }
-
     fn draw(
         &self,
-        tree: &Tree,
+        state: &Tree,
         renderer: &mut Renderer,
-        theme: &Renderer::Theme,
+        theme: &<Renderer as iced_core::Renderer>::Theme,
         renderer_style: &renderer::Style,
         layout: Layout<'_>,
-        cursor_position: Point,
+        cursor: iced_core::mouse::Cursor,
         viewport: &Rectangle,
     ) {
         let bounds = layout.bounds();
-        let is_mouse_over = bounds.contains(cursor_position);
-        let style = if is_mouse_over {
-            theme.hovered(&self.style)
-        } else {
-            theme.appearance(&self.style)
-        };
+        let mut style = theme.appearance(&self.style);
+        if let Some(cursor_position) = cursor.position() {
+            if bounds.contains(cursor_position) {
+                style = theme.hovered(&self.style);
+            }
+        }
         draw_background(renderer, &style, layout.bounds());
 
         self.content.as_widget().draw(
-            &tree.children[0],
+            &state.children[0],
             renderer,
             theme,
             &renderer::Style {
                 text_color: style.text_color.unwrap_or(renderer_style.text_color),
             },
             layout.children().next().unwrap(),
-            cursor_position,
+            cursor,
             viewport,
         );
-    }
-
-    fn overlay<'b>(
-        &'b mut self,
-        tree: &'b mut Tree,
-        layout: Layout<'_>,
-        renderer: &Renderer,
-    ) -> Option<overlay::Element<'b, Message, Renderer>> {
-        self.content.as_widget_mut().overlay(
-            &mut tree.children[0],
-            layout.children().next().unwrap(),
-            renderer,
-        )
     }
 }
 
 impl<'a, Message, Renderer> From<AppCard<'a, Message, Renderer>> for Element<'a, Message, Renderer>
 where
     Message: 'a + Clone,
-    Renderer: 'a + iced_native::Renderer,
+    Renderer: 'a + renderer::Renderer,
     Renderer::Theme: StyleSheet,
 {
     fn from(column: AppCard<'a, Message, Renderer>) -> Element<'a, Message, Renderer> {
@@ -321,7 +338,7 @@ where
 /// Computes the layout of a [`Container`].
 pub fn layout<Renderer>(
     renderer: &Renderer,
-    limits: &layout::Limits,
+    limits: &Limits,
     width: Length,
     height: Length,
     max_width: f32,
@@ -358,7 +375,7 @@ pub fn draw_background<Renderer>(
     appearance: &Appearance,
     bounds: Rectangle,
 ) where
-    Renderer: iced_native::Renderer,
+    Renderer: renderer::Renderer,
 {
     if appearance.background.is_some() || appearance.border_width > 0.0 {
         renderer.fill_quad(

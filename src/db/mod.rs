@@ -1,9 +1,17 @@
 pub mod search;
-use std::path::{Path, PathBuf};
+use std::{
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
-use rusqlite::{Connection, Statement};
+use iced::futures::{self, channel::mpsc};
+use iced_futures::subscription::Recipe;
+use rusqlite::Connection;
 
-use crate::backend::flatpak_backend::Package;
+use crate::{
+    backend::{self, flatpak_backend::Package},
+    db,
+};
 
 #[derive(Debug)]
 pub struct Storage {
@@ -87,5 +95,62 @@ impl Storage {
             .map(|s| s.unwrap())
             .collect::<Vec<_>>();
         Ok(pkgs)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Action {
+    Load(mpsc::Sender<Message>),
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    Ready(mpsc::Sender<Action>),
+    Progress(u32),
+    Loaded(Arc<Mutex<db::Storage>>),
+}
+pub fn subscribe() -> iced::Subscription<Message> {
+    iced::Subscription::from_recipe(DBSubscription)
+}
+
+pub struct DBSubscription;
+
+impl Recipe for DBSubscription {
+    type Output = Message;
+
+    fn hash(&self, state: &mut iced::advanced::Hasher) {
+        use std::hash::Hash;
+        std::any::TypeId::of::<Self>().hash(state);
+    }
+
+    fn stream(
+        self: Box<Self>,
+        _input: iced_futures::subscription::EventStream,
+    ) -> iced_futures::BoxStream<Self::Output> {
+        use futures::stream::StreamExt;
+        let (tx, rx) = mpsc::channel(10);
+        futures::stream::once(async { Message::Ready(tx) })
+            .chain(rx.map(|action| match action {
+                Action::Load(mut tx) => {
+                    let dbpath = PathBuf::from("./apps.db3");
+                    if dbpath.exists() {
+                        println!("DB exists, returning");
+                        let mut d = db::Storage::new().unwrap();
+                        // d.create_table().unwrap();
+                        // backend::flatpak_backend::get_packages_remote(&d, tx);
+                        d.all_packages = Some(d.all_names().unwrap());
+                        Message::Loaded(Arc::new(Mutex::new(d)))
+                    } else {
+                        println!("DB doesn't exist, creating");
+                        let mut d = db::Storage::new().unwrap();
+                        d.create_table().unwrap();
+                        backend::flatpak_backend::get_packages_remote(&d, tx);
+                        d.all_packages = Some(d.all_names().unwrap());
+                        // let _ = tx.try_send(Message::Progress(50));
+                        Message::Loaded(Arc::new(Mutex::new(d)))
+                    }
+                }
+            }))
+            .boxed()
     }
 }

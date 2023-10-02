@@ -3,6 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use iced::futures::{self, channel::mpsc};
 use rust_fuzzy_search::fuzzy_search_best_n;
 
 use crate::backend::flatpak_backend::{Package, PackageKind};

@@ -1,18 +1,15 @@
 use iced::{
     alignment, application, color,
     widget::{button, container, horizontal_rule, scrollable, text, text_input, Text},
-    Background, Color, Font, Vector,
+    Background, BorderRadius, Color, Font, Vector,
 };
 use iced_style::scrollable::Scroller;
 
-use super::{custom_widgets, toast};
+use super::custom_widgets;
 
-const ICONS: Font = Font::External {
-    name: "Nerc Icons",
-    bytes: include_bytes!("../../fonts/nerd_font.ttf"),
-};
+const ICONS: Font = Font::with_name("Symbols Nerd Font");
 
-pub const NOTO_SANS: &[u8; 556216] = include_bytes!("../../fonts/noto_sans.ttf");
+// pub const NOTO_SANS:  = Font::with_name("notosans") include_bytes!("../../fonts/noto_sans.ttf");
 
 pub fn icon(unicode: char) -> Text<'static, iced::Renderer<Theme>> {
     text(unicode.to_string())
@@ -125,7 +122,7 @@ impl container::StyleSheet for Theme {
             _ => 2.0,
         };
         container::Appearance {
-            border_radius: 20.0,
+            border_radius: BorderRadius::from(20.0),
             border_width,
             border_color,
             background,
@@ -173,7 +170,7 @@ impl iced::widget::rule::StyleSheet for Theme {
         iced_style::rule::Appearance {
             color: self.colors().border,
             width: 1,
-            radius: 1.0,
+            radius: 1.0.into(),
             fill_mode: iced_style::rule::FillMode::Full,
         }
     }
@@ -205,9 +202,9 @@ impl button::StyleSheet for Theme {
             ButtonStyle::Icon => self.colors().primary,
             _ => self.colors().on_surface,
         };
-        let border_radius = match style {
-            ButtonStyle::Primary => 30.0,
-            _ => 1.0,
+        let border_radius: BorderRadius = match style {
+            ButtonStyle::Primary => 30.0.into(),
+            _ => 1.0.into(),
         };
         button::Appearance {
             shadow_offset: Vector::default(),
@@ -243,19 +240,19 @@ impl scrollable::StyleSheet for Theme {
     fn active(&self, style: &Self::Style) -> iced_style::scrollable::Scrollbar {
         scrollable::Scrollbar {
             background: Some(Background::Color(self.colors().background)),
-            border_radius: 1.0,
+            border_radius: 1.0.into(),
             border_width: 1.0,
             border_color: self.colors().border,
             scroller: Scroller {
                 color: self.colors().primary,
-                border_radius: 1.0,
+                border_radius: 1.0.into(),
                 border_width: 1.0,
                 border_color: self.colors().border,
             },
         }
     }
 
-    fn hovered(&self, style: &Self::Style) -> iced_style::scrollable::Scrollbar {
+    fn hovered(&self, style: &Self::Style, is_mouse_over_scrollbar: bool) -> scrollable::Scrollbar {
         self.active(style)
     }
 }
@@ -266,9 +263,10 @@ impl text_input::StyleSheet for Theme {
     fn active(&self, _style: &Self::Style) -> text_input::Appearance {
         text_input::Appearance {
             background: Background::Color(self.colors().background),
-            border_radius: 20.0,
+            border_radius: 20.0.into(),
             border_width: 1.0,
             border_color: self.colors().border,
+            icon_color: self.colors().border,
         }
     }
 
@@ -290,33 +288,15 @@ impl text_input::StyleSheet for Theme {
     fn selection_color(&self, _style: &Self::Style) -> iced::Color {
         iced::Color::from_rgb(0.1, 0.6, 0.6)
     }
-}
 
-impl iced_aw::tabs::StyleSheet for Theme {
-    type Style = ();
+    fn disabled_color(&self, style: &Self::Style) -> Color {
+        iced::Color::from_rgb(0.99, 0.99, 0.99)
+    }
 
-    fn active(&self, _style: Self::Style, _is_active: bool) -> iced_aw::style::tab_bar::Appearance {
-        iced_aw::style::tab_bar::Appearance {
-            background: Some(Background::Color(self.colors().background)),
-            border_color: Some(self.colors().border),
-            border_width: 1.0,
-            tab_label_background: Background::Color(self.colors().background),
-            tab_label_border_color: self.colors().border,
-            tab_label_border_width: 1.0,
-            icon_color: self.colors().primary,
-            text_color: self.colors().primary,
+    fn disabled(&self, style: &Self::Style) -> text_input::Appearance {
+        text_input::Appearance {
+            border_color: self.colors().primary,
+            ..self.active(style)
         }
     }
-
-    fn hovered(
-        &self,
-        _style: Self::Style,
-        _is_active: bool,
-    ) -> iced_aw::style::tab_bar::Appearance {
-        iced_aw::style::tab_bar::Appearance::default()
-    }
-}
-
-impl toast::StyleSheet for Theme {
-    type Style = ();
 }

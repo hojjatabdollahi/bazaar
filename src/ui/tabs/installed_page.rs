@@ -76,6 +76,7 @@ impl InstalledPage {
         .padding(10)
         .center_x()
     }
+
     fn app_card(&self, package: &Package) -> iced::Element<Message, iced::Renderer<Theme>> {
         AppCard::new(
             container(row(vec![
@@ -108,6 +109,7 @@ impl InstalledPage {
         .height(Length::Shrink)
         .into()
     }
+
     fn installed_apps_view(&self) -> iced::Element<Message, iced::Renderer<Theme>> {
         container(
             column(vec![

@@ -1,25 +1,31 @@
-use cosmic_time::{keyframes, Timeline};
+use cosmic_time::{chain, container as c, id, Timeline};
 use iced::{
     event, executor,
-    futures::channel::mpsc,
+    futures::{channel::mpsc, StreamExt},
     keyboard::{self, Modifiers},
     subscription,
     widget::{button, column, container, text},
     window, Alignment, Application, Color, Element, Event, Length, Settings,
 };
 
-use iced_aw::{tabs::TabBarStyles, TabBar, Tabs};
 use std::{
+    borrow::{Borrow, BorrowMut},
+    cell::RefCell,
+    path::PathBuf,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
-use crate::{backend::flatpak_backend::PackageId, db::Storage};
+use crate::{
+    backend::{self, flatpak_backend::PackageId},
+    db::{self, Storage},
+};
 
 use super::{
-    action, appearance,
+    action,
+    appearance,
     tabs::app_view::AppView,
-    toast::{self, Status, Toast},
+    // toast::{self, Status, Toast},
 };
 use super::{
     appearance::Theme,
@@ -31,11 +37,11 @@ use super::{
 };
 
 use once_cell::sync::Lazy;
-static CONTAINER: Lazy<keyframes::container::Id> = Lazy::new(keyframes::container::Id::unique);
+static CONTAINER: Lazy<id::Container> = Lazy::new(id::Container::unique);
 
 pub fn run() -> iced::Result {
     BazaarApp::run(Settings {
-        default_font: Some(appearance::NOTO_SANS),
+        // default_font: Some(appearance::NOTO_SANS),
         window: window::Settings {
             decorations: true,
             transparent: true,
@@ -52,8 +58,10 @@ pub struct Config {
 
 struct BazaarApp {
     pub config: Config,
-    action: mpsc::Sender<action::Action>,
-    db: Arc<Mutex<Storage>>,
+    action: Option<mpsc::Sender<action::Action>>,
+    db: Option<Arc<Mutex<Storage>>>,
+    db_stream: Option<mpsc::Sender<db::Action>>,
+    db_progress: Option<mpsc::Receiver<db::Message>>,
     scaling_factor: f64,
     landing_page: LandingPage,
     installed_page: InstalledPage,
@@ -61,7 +69,7 @@ struct BazaarApp {
     active_tab: usize,
     timeline: Timeline,
     current_page: Page,
-    toasts: Vec<Toast>,
+    // toasts: Vec<Toast>,
     timeout_secs: u64,
 }
 
@@ -74,6 +82,7 @@ pub enum Page {
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    FontLoaded(Result<(), iced::font::Error>),
     RequestRefreshInstalledApps,
     RequestRefreshUpdates,
     RequestRefreshStaffPickApps,
@@ -81,6 +90,7 @@ pub enum Message {
     Uninstall(PackageId),
     Detail(PackageId),
     ActionMessage(action::Message),
+    DBMessage(db::Message),
     Search(String),
     SearchButton,
     IncreaseScalingFactor,
@@ -110,23 +120,26 @@ impl Application for BazaarApp {
     }
 
     fn new(_flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
-        let (tx, _) = mpsc::channel(1);
-        let mut db = Storage::new().unwrap();
-        db.create_table().unwrap();
-        db.all_packages = Some(db.all_names().unwrap());
+        // let mut db = Storage::new().unwrap();
+        // db.create_table().unwrap();
+        // db.all_packages = Some(db.all_names().unwrap());
         let config = Config { dark_mode: true };
-        let db = Arc::new(Mutex::new(db));
+        let db = None;
         let mut timeline = Timeline::new();
-        let animation = cosmic_time::container::Chain::new(CONTAINER.clone())
-            .link(keyframes::Container::new(Duration::ZERO).width(Length::Fixed(0.)))
-            .link(keyframes::Container::new(Duration::from_millis(700)).width(Length::Fixed(800.)));
+        let animation = chain![
+            CONTAINER,
+            c(Duration::ZERO).width(0.),
+            c(Duration::from_millis(700)).width(800.),
+        ];
         timeline.set_chain(animation).start();
 
         (
             BazaarApp {
                 config: config.clone(),
-                action: tx,
+                action: None,
                 db,
+                db_stream: None,
+                db_progress: None,
                 scaling_factor: 1.0,
                 landing_page: LandingPage::new(config.clone()),
                 installed_page: InstalledPage::new(config.clone()),
@@ -134,14 +147,15 @@ impl Application for BazaarApp {
                 active_tab: Default::default(),
                 timeline,
                 current_page: Page::LandingPage,
-                toasts: vec![Toast {
-                    title: "Loading...".into(),
-                    body: "Updating the database. Please wait...".into(),
-                    status: Status::Primary,
-                }],
+                // toasts: vec![Toast {
+                //     title: "Loading...".into(),
+                //     body: "Updating the database. Please wait...".into(),
+                //     status: Status::Primary,
+                // }],
                 timeout_secs: 30, /* toast::DEFAULT_TIMEOUT */
             },
-            iced::Command::none(),
+            iced::font::load(include_bytes!("../../fonts/nerd_font.ttf").as_slice())
+                .map(Message::FontLoaded),
         )
     }
 
@@ -152,6 +166,7 @@ impl Application for BazaarApp {
     fn subscription(&self) -> iced::Subscription<Self::Message> {
         iced::Subscription::batch([
             action::subscribe().map(Message::ActionMessage),
+            db::subscribe().map(Message::DBMessage),
             self.landing_page
                 .timeline
                 .as_subscription::<Event>()
@@ -194,17 +209,35 @@ impl Application for BazaarApp {
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
+        if self.db_progress.is_some() {
+            match self.db_progress.as_mut().unwrap().try_next() {
+                Ok(Some(db::Message::Progress(p))) => {
+                    let _ = self
+                        .landing_page
+                        .update(LandingPageMessage::DBLoadProgress(p));
+                }
+                _ => {}
+            };
+        }
         match message {
             Message::RequestRefreshInstalledApps => {
-                let _ = self.action.start_send(action::Action::RefreshInstalled);
-            }
-            Message::RequestRefreshUpdates => {
-                let _ = self.action.start_send(action::Action::RefreshUpdates);
-            }
-            Message::RequestRefreshStaffPickApps => {
                 let _ = self
                     .action
-                    .start_send(action::Action::RefreshStaffPicks(self.db.clone()));
+                    .as_mut()
+                    .map(|tx| tx.start_send(action::Action::RefreshInstalled));
+            }
+            Message::RequestRefreshUpdates => {
+                let _ = self
+                    .action
+                    .as_mut()
+                    .map(|tx| tx.start_send(action::Action::RefreshUpdates));
+            }
+            Message::RequestRefreshStaffPickApps => {
+                let _ = self.action.as_mut().map(|tx| {
+                    tx.start_send(action::Action::RefreshStaffPicks(
+                        self.db.as_ref().unwrap().clone(),
+                    ))
+                });
             }
             Message::Install(id) => {
                 println!("Installing {}", id);
@@ -214,14 +247,18 @@ impl Application for BazaarApp {
                 println!("Uninstalling {}", id);
                 let _ = self
                     .action
-                    .start_send(action::Action::Uninstall(id.clone()));
+                    .as_mut()
+                    .map(|tx| tx.start_send(action::Action::Uninstall(id.clone())));
             }
             Message::Search(st) => {
                 if st.len() >= 3 {
                     println!("searching for {}", st);
-                    let _ = self
-                        .action
-                        .start_send(action::Action::Search((self.db.clone(), st.clone())));
+                    let _ = self.action.as_mut().map(|tx| {
+                        tx.start_send(action::Action::Search((
+                            self.db.as_ref().unwrap().clone(),
+                            st.clone(),
+                        )))
+                    });
                 }
                 let _ = self.landing_page.update(LandingPageMessage::Search(st));
             }
@@ -245,16 +282,40 @@ impl Application for BazaarApp {
                 self.current_page = page;
             }
             Message::Close(index) => {
-                self.toasts.remove(index);
+                // self.toasts.remove(index);
             }
-            Message::ActionMessage(msg) => match msg {
-                action::Message::Ready(tx) => {
-                    self.action = tx;
+            Message::DBMessage(msg) => match msg {
+                db::Message::Ready(tx) => {
+                    self.db_stream = Some(tx);
+                    let (tx, rx) = mpsc::channel::<db::Message>(10);
+                    self.db_progress = Some(rx);
+                    let _ = self
+                        .db_stream
+                        .as_mut()
+                        .map(|dbtx| dbtx.start_send(db::Action::Load(tx)));
+                }
+                db::Message::Progress(_) => {}
+                db::Message::Loaded(db) => {
+                    self.db = Some(db);
+                    let _ = self.landing_page.update(LandingPageMessage::DBLoaded);
+                    let _ = self.action.as_mut().map(|tx| {
+                        tx.start_send(action::Action::RefreshStaffPicks(
+                            self.db.as_ref().unwrap().clone(),
+                        ))
+                    });
                     let _ = self
                         .action
-                        .start_send(action::Action::RefreshStaffPicks(self.db.clone()));
-                    let _ = self.action.start_send(action::Action::RefreshInstalled);
-                    let _ = self.action.start_send(action::Action::RefreshUpdates);
+                        .as_mut()
+                        .map(|tx| tx.start_send(action::Action::RefreshInstalled));
+                    let _ = self
+                        .action
+                        .as_mut()
+                        .map(|tx| tx.start_send(action::Action::RefreshUpdates));
+                }
+            },
+            Message::ActionMessage(msg) => match msg {
+                action::Message::Ready(tx) => {
+                    self.action = Some(tx);
                 }
                 action::Message::Installed(apps) => {
                     self.installed_page
@@ -274,13 +335,17 @@ impl Application for BazaarApp {
                 }
                 action::Message::Uninstalled(id) => {
                     println!("Uninstalled {:?}", id);
-                    let _ = self.action.start_send(action::Action::RefreshInstalled);
+                    let _ = self
+                        .action
+                        .as_mut()
+                        .map(|tx| tx.start_send(action::Action::RefreshInstalled));
                 }
             },
             Message::Tick(now) => self.landing_page.timeline.now(now),
             Message::SearchButton => {
                 return self.landing_page.update(LandingPageMessage::SearchButton);
             }
+            Message::FontLoaded(_) => (),
         }
         iced::Command::none()
     }

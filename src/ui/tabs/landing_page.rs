@@ -5,16 +5,18 @@ use std::{
     time::Duration,
 };
 
-use cosmic_time::{keyframes, Ease, Timeline};
+use cosmic_time::{chain, container as c, id, Chain};
+use cosmic_time::{Ease, Timeline};
 use iced::{
     mouse::Button,
     widget::{
         self, button, column, container, horizontal_rule, horizontal_space, image, row, scrollable,
-        text, text_input, Container, Row,
+        text, text_input, Column, Container, Row,
     },
     Command, Length,
 };
 use iced_aw::{graphics::icons::Icon, wrap, TabLabel};
+use iced_native::Widget;
 use once_cell::sync::Lazy;
 
 use super::Tab;
@@ -28,26 +30,28 @@ use crate::{
     },
 };
 
-static CONTAINER: Lazy<keyframes::container::Id> = Lazy::new(keyframes::container::Id::unique);
+static CONTAINER: Lazy<id::Container> = Lazy::new(id::Container::unique);
 
-fn anim_searchbox_open() -> cosmic_time::container::Chain {
-    cosmic_time::container::Chain::new(CONTAINER.clone())
-        .link(keyframes::Container::new(Duration::ZERO).width(Length::Fixed(0.)))
-        .link(
-            keyframes::Container::new(Duration::from_millis(200))
-                .width(Length::Fixed(400.))
-                .ease(Ease::Exponential(cosmic_time::Exponential::InOut)),
-        )
+fn anim_searchbox_open() -> Chain {
+    chain![
+        CONTAINER,
+        c(Duration::ZERO).width(0.),
+        c(Duration::from_millis(200))
+            .width(400.)
+            .ease(Ease::Exponential(cosmic_time::Exponential::InOut)),
+    ]
+    .into()
 }
 
-fn anim_searchbox_close() -> cosmic_time::container::Chain {
-    cosmic_time::container::Chain::new(CONTAINER.clone())
-        .link(keyframes::Container::new(Duration::ZERO).width(Length::Fixed(400.)))
-        .link(
-            keyframes::Container::new(Duration::from_millis(200))
-                .width(Length::Fixed(0.))
-                .ease(Ease::Exponential(cosmic_time::Exponential::InOut)),
-        )
+fn anim_searchbox_close() -> Chain {
+    chain![
+        CONTAINER,
+        c(Duration::ZERO).width(400.),
+        c(Duration::from_millis(200))
+            .width(0.)
+            .ease(Ease::Exponential(cosmic_time::Exponential::InOut)),
+    ]
+    .into()
 }
 
 pub struct LandingPage {
@@ -58,6 +62,8 @@ pub struct LandingPage {
     config: Config,
     pub timeline: Timeline,
     status: Status,
+    db_loading_progress: u32,
+    db_loaded: bool,
 }
 
 enum Status {
@@ -72,6 +78,8 @@ pub enum LandingPageMessage {
     Found(Arc<Vec<Package>>),
     StaffPicks(Arc<Vec<Package>>),
     SearchButton,
+    DBLoaded,
+    DBLoadProgress(u32),
 }
 
 impl LandingPage {
@@ -85,6 +93,8 @@ impl LandingPage {
             config,
             timeline,
             status: Status::Default,
+            db_loading_progress: 0,
+            db_loaded: false,
         }
     }
 
@@ -124,6 +134,14 @@ impl LandingPage {
                     .resume(CONTAINER.clone())
                     .start();
                 widget::focus_next()
+            }
+            LandingPageMessage::DBLoaded => {
+                self.db_loaded = true;
+                Command::none()
+            }
+            LandingPageMessage::DBLoadProgress(progress) => {
+                self.db_loading_progress = progress;
+                Command::none()
             }
         }
     }
@@ -195,6 +213,12 @@ impl LandingPage {
     }
 
     fn search_view(&self) -> iced::Element<Message, iced::Renderer<Theme>> {
+        let loading: iced::Element<_, _> = Column::new()
+            .push(text(format!(
+                "Loading the db: {}%",
+                self.db_loading_progress
+            )))
+            .into();
         let staff_picks = column(vec![
             text("Staff Picks!").size(30).into(),
             horizontal_rule(1.).into(),
@@ -203,7 +227,6 @@ impl LandingPage {
                 for package in staff_picks.borrow().iter() {
                     apps.push(self.app_card(&package, false, false));
                 }
-
                 column(vec![scrollable(
                     container(
                         wrap::Wrap::with_elements(apps)
@@ -228,7 +251,7 @@ impl LandingPage {
         .spacing(10.0);
 
         let mut apps = vec![];
-        container(
+        container(if self.db_loaded {
             column(vec![
                 if let Ok(found_apps) = self.found_apps.try_lock() {
                     for package in found_apps.borrow().iter() {
@@ -239,26 +262,24 @@ impl LandingPage {
                     column(vec![
                         row(vec![
                             match self.status {
-                                Status::Searching => keyframes::Container::as_widget(
+                                Status::Searching => id::Container::as_widget(
                                     CONTAINER.clone(),
                                     &self.timeline,
-                                    text_input("Search Term", &self.search_term, Message::Search)
+                                    text_input("Search Term", &self.search_term)
+                                        .on_input(Message::Search)
                                         .padding([4.0, 12.0, 4.0, 12.0]),
                                 )
                                 .into(),
                                 Status::StoppingSearch => {
-                                    let search_box = keyframes::Container::as_widget(
+                                    let search_box = id::Container::as_widget(
                                         CONTAINER.clone(),
                                         &self.timeline,
-                                        text_input(
-                                            "Search Term",
-                                            &self.search_term,
-                                            Message::Search,
-                                        )
-                                        .padding([4.0, 12.0, 4.0, 12.0]),
+                                        text_input("Search Term", &self.search_term)
+                                            .on_input(Message::Search)
+                                            .padding([4.0, 12.0, 4.0, 12.0]),
                                     );
                                     if let Length::Fixed(width) =
-                                        iced_native::widget::Widget::width(&search_box)
+                                        iced_core::widget::Widget::width(&search_box)
                                     {
                                         if width < 1. {
                                             button(appearance::icon('\u{ea6d}'))
@@ -312,8 +333,11 @@ impl LandingPage {
                 },
                 staff_picks.into(),
             ])
-            .spacing(10.0),
-        )
+            .spacing(10.0)
+            .into()
+        } else {
+            loading
+        })
         .style(ContainerStyle::Default)
         .padding(10.0)
         .into()
