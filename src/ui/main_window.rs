@@ -22,10 +22,9 @@ use crate::{
 };
 
 use super::{
-    action,
-    appearance,
+    action, appearance,
+    custom_widgets::toast::{self, Status, Toast},
     tabs::app_view::AppView,
-    // toast::{self, Status, Toast},
 };
 use super::{
     appearance::Theme,
@@ -69,7 +68,7 @@ struct BazaarApp {
     active_tab: usize,
     timeline: Timeline,
     current_page: Page,
-    // toasts: Vec<Toast>,
+    toasts: Vec<Toast>,
     timeout_secs: u64,
 }
 
@@ -147,11 +146,11 @@ impl Application for BazaarApp {
                 active_tab: Default::default(),
                 timeline,
                 current_page: Page::LandingPage,
-                // toasts: vec![Toast {
-                //     title: "Loading...".into(),
-                //     body: "Updating the database. Please wait...".into(),
-                //     status: Status::Primary,
-                // }],
+                toasts: vec![Toast {
+                    title: "Loading...".into(),
+                    body: "Updating the database. Please wait...".into(),
+                    status: Status::Primary,
+                }],
                 timeout_secs: 30, /* toast::DEFAULT_TIMEOUT */
             },
             iced::font::load(include_bytes!("../../fonts/nerd_font.ttf").as_slice())
@@ -282,7 +281,7 @@ impl Application for BazaarApp {
                 self.current_page = page;
             }
             Message::Close(index) => {
-                // self.toasts.remove(index);
+                self.toasts.remove(index);
             }
             Message::DBMessage(msg) => match msg {
                 db::Message::Ready(tx) => {
@@ -363,7 +362,10 @@ impl Application for BazaarApp {
         // toast::Manager::new(content, &self.toasts, Message::Close)
         //     .timeout(self.timeout_secs)
         //     .into()
-        content.into()
+        // content.into()
+        toast::Manager::new(content, &self.toasts, Message::Close)
+            .timeout(self.timeout_secs)
+            .into()
     }
 
     fn scale_factor(&self) -> f64 {

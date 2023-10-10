@@ -155,6 +155,31 @@ impl custom_widgets::appcard::StyleSheet for Theme {
     }
 }
 
+impl custom_widgets::toast::StyleSheet for Theme {
+    type Style = ();
+
+    fn appearance(&self, _style: &Self::Style) -> custom_widgets::toast::Appearance {
+        custom_widgets::toast::Appearance {
+            border_radius: 20.0,
+            border_width: 1.0,
+            border_color: self.colors().border,
+            background: Some(Background::Color(self.colors().surface)),
+            text_color: None,
+        }
+    }
+
+    fn hovered(&self, _sytle: &Self::Style) -> custom_widgets::toast::Appearance {
+        custom_widgets::toast::Appearance {
+            border_radius: 20.0,
+            border_width: 1.0,
+            border_color: self.colors().border,
+            background: Some(Background::Color(self.colors().surface_1up)),
+            text_color: None,
+        }
+    }
+}
+
+
 impl text::StyleSheet for Theme {
     type Style = ();
 
